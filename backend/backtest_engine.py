@@ -277,6 +277,74 @@ def run_out_of_sample(
     }
 
 
+STRATEGY_TEMPLATES = [
+    {
+        "name": "RSI Mean Reversion",
+        "category": "Mean Reversion",
+        "description": "Buy when RSI is oversold, sell when overbought",
+        "buy_expr": "rsi(14) < 30",
+        "sell_expr": "rsi(14) > 70",
+        "params": {"rsi_period": 14, "buy_threshold": 30, "sell_threshold": 70},
+    },
+    {
+        "name": "RSI Aggressive",
+        "category": "Mean Reversion",
+        "description": "More extreme RSI levels for stronger signals",
+        "buy_expr": "rsi(14) < 20",
+        "sell_expr": "rsi(14) > 80",
+        "params": {"rsi_period": 14, "buy_threshold": 20, "sell_threshold": 80},
+    },
+    {
+        "name": "MACD Crossover",
+        "category": "Momentum",
+        "description": "Buy on bullish MACD cross, sell on bearish cross",
+        "buy_expr": "macd_cross('bullish')",
+        "sell_expr": "macd_cross('bearish')",
+        "params": {},
+    },
+    {
+        "name": "Bollinger Bounce",
+        "category": "Mean Reversion",
+        "description": "Buy at lower band, sell at upper band",
+        "buy_expr": "close < bb_lower(20, 2)",
+        "sell_expr": "close > bb_upper(20, 2)",
+        "params": {"period": 20, "std": 2},
+    },
+    {
+        "name": "Stochastic + RSI Combo",
+        "category": "Composite",
+        "description": "Both oscillators must agree on oversold/overbought",
+        "buy_expr": "stochastic_k(14) < 20 and rsi(14) < 30",
+        "sell_expr": "stochastic_k(14) > 80 and rsi(14) > 70",
+        "params": {},
+    },
+    {
+        "name": "Trend Following (ADX + MACD)",
+        "category": "Trend",
+        "description": "Enter when ADX shows strong trend + MACD confirms direction",
+        "buy_expr": "adx(14) > 25 and macd_cross('bullish')",
+        "sell_expr": "adx(14) > 25 and macd_cross('bearish')",
+        "params": {},
+    },
+    {
+        "name": "Volume Breakout",
+        "category": "Breakout",
+        "description": "Buy on volume spike with positive momentum",
+        "buy_expr": "volume > sma(volume, 20) * 2 and rsi(14) > 50",
+        "sell_expr": "rsi(14) > 75 or volume < sma(volume, 20) * 0.5",
+        "params": {},
+    },
+    {
+        "name": "MFI Divergence",
+        "category": "Volume",
+        "description": "Buy when MFI shows money inflow but price still low",
+        "buy_expr": "mfi(14) < 25 and rsi(14) < 35",
+        "sell_expr": "mfi(14) > 75 or rsi(14) > 70",
+        "params": {},
+    },
+]
+
+
 def run_monte_carlo(trades: list[dict], n_simulations: int = 1000, initial_capital: float = 100000) -> dict:
     """Monte Carlo simulation — shuffle trade order to assess robustness."""
     if not trades or len(trades) < 5:

@@ -1252,6 +1252,13 @@ async def api_neutralize(ticker: str, body: NeutralizeBody, db: Session = Depend
     return result
 
 
+@app.get("/api/backtest/templates")
+async def api_backtest_templates():
+    """Get pre-built strategy templates."""
+    from backend.backtest_engine import STRATEGY_TEMPLATES
+    return STRATEGY_TEMPLATES
+
+
 class BacktestBody(BaseModel):
     buy_expr: str
     sell_expr: str
