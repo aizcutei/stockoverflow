@@ -1,0 +1,27 @@
+[project]
+name = "stockoverflow"
+version = "0.1.0"
+description = "US stock search with daily candle/volume data"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "yfinance>=0.2.40",
+    "sqlalchemy>=2.0.0",
+    "pydantic>=2.0.0",
+    "ta>=0.11.0",
+    "openai>=2.43.0",
+    "pydantic-settings>=2.14.2",
+    "slowapi>=0.1.10",
+    "scipy>=1.18.0",
+]
+
+[project.scripts]
+stockoverflow = "main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-anyio>=0.0.0",
+]

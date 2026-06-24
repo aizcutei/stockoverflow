@@ -1,0 +1,3475 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>StockOverflow — Smart Stock Analysis</title>
+  <meta name="description" content="One-stop stock analysis platform with 16 technical indicators, AI predictions, factor lab, and paper trading." />
+  <meta name="theme-color" content="#0f1117" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    /* ── themes ── */
+    :root, [data-theme="dark"] {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #222536;
+      --border: #2a2d3a; --text: #e1e4ea; --text-dim: #8b8fa3;
+      --accent: #4a9eff; --green: #26a69a; --red: #ef5350; --yellow: #ffab40;
+      --chart-bg: #1a1d27; --chart-text: #8b8fa3; --chart-grid: #2a2d3a;
+      --header-bg: transparent; --shadow: none;
+
+      /* Design System — spacing */
+      --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+      --space-lg: 16px; --space-xl: 24px; --space-2xl: 32px;
+
+      /* Design System — typography */
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --text-xs: 11px; --text-sm: 12px; --text-base: 13px;
+      --text-lg: 15px; --text-xl: 18px; --text-2xl: 22px; --text-3xl: 28px;
+
+      /* Design System — radius */
+      --radius-sm: 4px; --radius-md: 6px; --radius-lg: 8px;
+      --radius-xl: 10px; --radius-2xl: 12px; --radius-full: 9999px;
+
+      /* Design System — shadows */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+      --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    [data-theme="light"] {
+      --bg: #f5f6fa; --surface: #ffffff; --surface2: #eef0f5;
+      --border: #d8dce6; --text: #1a1d2e; --text-dim: #6b7280;
+      --accent: #2563eb; --green: #059669; --red: #dc2626; --yellow: #d97706;
+      --chart-bg: #ffffff; --chart-text: #6b7280; --chart-grid: #e5e7eb;
+      --header-bg: transparent; --shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ── header ── */
+    header {
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 24px;
+      background: var(--header-bg); box-shadow: var(--shadow);
+    }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    header nav a:hover { color: var(--text) !important; }
+    .search-wrap { position: relative; flex: 1; max-width: 480px; }
+    #search-input {
+      width: 100%; padding: 10px 16px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text); font-size: 14px; outline: none;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+    #search-input:focus { border-color: var(--accent); }
+    #search-input::placeholder { color: var(--text-dim); }
+    #search-results {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      margin-top: 4px; max-height: 300px; overflow-y: auto; z-index: 100; display: none;
+    }
+    .search-item {
+      padding: 10px 16px; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-item:last-child { border-bottom: none; }
+    .search-item:hover { background: var(--surface2); }
+    .search-item .ticker { font-weight: 600; color: var(--accent); margin-right: 12px; }
+    .search-item .name { color: var(--text-dim); font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .search-item .exchange { color: var(--text-dim); font-size: 12px; margin-left: 12px; }
+
+    /* ── theme button ── */
+    .header-right { margin-left: auto; display: flex; align-items: center; }
+    #theme-btn {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; font-size: 18px; color: var(--text); transition: all 0.3s;
+    }
+    #theme-btn:hover { border-color: var(--accent); }
+
+    /* ── main layout ── */
+    main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+    #stock-info { display: none; margin-bottom: 16px; }
+    #stock-info .header-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+    #stock-info .ticker-label { font-size: 26px; font-weight: 700; }
+    #stock-info .name-label { font-size: 15px; color: var(--text-dim); }
+    #stock-info .meta-row { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--text-dim); }
+    #stock-info .meta-row span { white-space: nowrap; }
+    #stock-info .meta-row .value { color: var(--text); font-weight: 500; }
+
+    .content-wrap {
+      display: none; gap: 20px;
+      grid-template-columns: 1fr 360px;
+    }
+    #left-panel { min-width: 0; }
+    @media (max-width: 1100px) {
+      .content-wrap { grid-template-columns: 1fr; }
+      .indicators-panel { max-height: none !important; }
+    }
+    @media (max-width: 768px) {
+      header { padding: 10px 12px; gap: 10px; }
+      header h1 { font-size: 16px; }
+      .search-wrap { max-width: 100%; }
+      #search-input { font-size: 16px; padding: 10px 12px; } /* prevent iOS zoom */
+      main { padding: 12px; }
+      #stock-info .ticker-label { font-size: 20px; }
+      #chart { height: 300px; }
+      #volume-chart { height: 80px; }
+      .indicators-panel { gap: 8px; }
+      .ind-card { padding: 10px; }
+      .ind-card .ind-name { font-size: 12px; }
+      .llm-card .llm-action { font-size: 22px; }
+      .llm-card .llm-prices { grid-template-columns: 1fr 1fr; }
+      .bt-metrics { grid-template-columns: repeat(2, 1fr); }
+      .dash-grid { grid-template-columns: 1fr; }
+      .header-right { gap: 4px; }
+      #settings-btn, #theme-btn, #lang-btn { width: 34px; height: 34px; font-size: 14px; }
+      #predict-btn, #share-btn { padding: 6px 10px; font-size: 12px; }
+    }
+
+    /* ── chart ── */
+    #chart-container {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; min-width: 0;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    #chart { width: 100%; height: 420px; }
+    #volume-chart { width: 100%; height: 110px; border-top: 1px solid var(--border); }
+    .chart-fullscreen {
+      position: fixed !important; inset: 0 !important; z-index: 900;
+      border-radius: 0 !important; height: 100vh !important;
+    }
+    .chart-fullscreen #chart { height: calc(100vh - 130px) !important; }
+    .chart-fullscreen #volume-chart { height: 130px !important; }
+    #fullscreen-btn {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 8px; cursor: pointer; font-size: 14px; color: var(--text-dim);
+      transition: color 0.2s;
+    }
+    #fullscreen-btn:hover { color: var(--text); }
+    .tf-btn {
+      padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text-dim); font-size: 11px;
+      font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .tf-btn:hover { border-color: var(--accent); color: var(--text); }
+    .tf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .sub-chart-slot { width: 100%; height: 150px; border-top: 1px solid var(--border); display: none; }
+
+    /* ── indicators panel ── */
+    .indicators-panel {
+      display: flex; flex-direction: column; gap: 12px;
+      max-height: 700px; overflow-y: auto; padding-right: 4px;
+    }
+    .indicators-panel::-webkit-scrollbar { width: 5px; }
+    .indicators-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* overall card */
+    .overall-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; text-align: center; transition: background 0.3s, border-color 0.3s;
+    }
+    .overall-card .label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .overall-card .signal-badge { font-size: 22px; font-weight: 800; letter-spacing: 2px; }
+    .overall-card .score-bar { margin: 10px 0 6px; height: 6px; border-radius: 3px; background: var(--border); position: relative; overflow: hidden; }
+    .overall-card .score-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .overall-card .score-label { font-size: 12px; color: var(--text-dim); }
+    .overall-card .summary { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+
+    /* indicator card */
+    .ind-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; cursor: default; transition: background 0.3s, border-color 0.3s;
+    }
+    .ind-card:hover { border-color: var(--accent); }
+    .ind-card .ind-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .ind-card .ind-header-left { display: flex; align-items: center; gap: 10px; }
+    .ind-card .ind-name { font-weight: 600; font-size: 14px; }
+    .ind-card .ind-params { font-size: 11px; color: var(--text-dim); }
+    .ind-card .ind-signal {
+      font-size: 11px; font-weight: 700; padding: 3px 10px;
+      border-radius: 4px; letter-spacing: 0.5px;
+    }
+    .ind-card .ind-reason { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.4; }
+    .ind-card .ind-levels { display: flex; gap: 16px; margin-bottom: 10px; }
+    .ind-card .level-item { flex: 1; background: var(--surface2); border-radius: 6px; padding: 8px 10px; text-align: center; transition: background 0.3s; }
+    .ind-card .level-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .ind-card .level-value { font-size: 15px; font-weight: 600; margin-top: 2px; }
+    .ind-card .ind-values { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ind-card .val-chip {
+      background: var(--surface2); border-radius: 5px; padding: 4px 8px;
+      font-size: 11px; color: var(--text-dim); transition: background 0.3s;
+    }
+    .ind-card .val-chip .vk { color: var(--text); font-weight: 500; }
+    .ind-card .strength-bar { margin-top: 10px; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; }
+    .ind-card .strength-fill { height: 100%; border-radius: 2px; }
+
+    .signal-buy { background: rgba(38,166,154,0.15); color: var(--green); }
+    .signal-sell { background: rgba(239,83,80,0.15); color: var(--red); }
+    .signal-watch { background: rgba(255,171,64,0.15); color: var(--yellow); }
+    .signal-neutral { background: rgba(139,143,163,0.1); color: var(--text-dim); }
+
+    /* ── CNN Fear & Greed gauge ── */
+    .fg-gauge { margin: 10px 0; text-align: center; }
+    .fg-gauge-bar { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red), var(--yellow), var(--green)); position: relative; margin: 6px 0; }
+    .fg-gauge-marker {
+      position: absolute; top: -4px; width: 4px; height: 16px;
+      background: var(--text); border-radius: 2px; transform: translateX(-50%);
+      transition: left 0.5s;
+    }
+    .fg-gauge-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-dim); }
+    .fg-score-big { font-size: 28px; font-weight: 800; }
+    .fg-rating { font-size: 13px; color: var(--text-dim); margin-top: 2px; text-transform: capitalize; }
+    .fg-subs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 10px; }
+    .fg-sub-item {
+      background: var(--surface2); border-radius: 5px; padding: 5px 8px;
+      display: flex; justify-content: space-between; align-items: center; font-size: 11px;
+    }
+    .fg-sub-item .fg-sub-name { color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fg-sub-item .fg-sub-score { font-weight: 600; margin-left: 6px; }
+
+    /* ── toggle switch ── */
+    .toggle-wrap { display: flex; align-items: center; gap: 6px; }
+    .toggle-label { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+    .toggle {
+      position: relative; width: 36px; height: 20px; cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .slider {
+      position: absolute; inset: 0; background: var(--border); border-radius: 10px; transition: 0.3s;
+    }
+    .toggle .slider::before {
+      content: ''; position: absolute; width: 14px; height: 14px;
+      left: 3px; bottom: 3px; background: var(--text-dim); border-radius: 50%; transition: 0.3s;
+    }
+    .toggle input:checked + .slider { background: var(--accent); }
+    .toggle input:checked + .slider::before {
+      transform: translateX(16px); background: #fff;
+    }
+
+    #loading { text-align: center; padding: 80px 0; color: var(--text-dim); font-size: 15px; display: none; }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #welcome { text-align: center; padding: 100px 0; color: var(--text-dim); }
+    #welcome h2 { font-size: 22px; margin-bottom: 8px; color: var(--text); }
+
+    /* ── dashboard ── */
+    #dashboard { display: none; max-width: 1000px; margin: 0 auto; }
+    .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    @media (max-width: 768px) { .dash-grid { grid-template-columns: 1fr; } }
+    .dash-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; transition: background 0.3s, border-color 0.3s;
+    }
+    .dash-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; color: var(--text-dim); }
+    .dash-card .dash-big { font-size: 28px; font-weight: 800; }
+    .dash-card .dash-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+    .dash-stock-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dash-stock-chip {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: border-color 0.2s; color: var(--accent);
+    }
+    .dash-stock-chip:hover { border-color: var(--accent); }
+    .dash-pred-item {
+      display: flex; gap: 8px; align-items: center; padding: 6px 0;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .dash-pred-item:last-child { border-bottom: none; }
+    .dash-trade-item {
+      display: flex; gap: 8px; align-items: center; padding: 6px 0;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .dash-trade-item:last-child { border-bottom: none; }
+
+    /* ── watchlist ── */
+    .watchlist-item {
+      display: flex; align-items: center; padding: 8px 0;
+      border-bottom: 1px solid var(--border); cursor: pointer;
+      transition: background 0.2s;
+    }
+    .watchlist-item:hover { background: var(--surface2); }
+    .watchlist-item:last-child { border-bottom: none; }
+    .watchlist-item .wl-ticker { font-weight: 600; color: var(--accent); width: 65px; }
+    .watchlist-item .wl-name { flex: 1; font-size: 12px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .watchlist-item .wl-price { width: 70px; text-align: right; font-size: 13px; font-weight: 500; }
+    .watchlist-item .wl-change { width: 65px; text-align: right; font-size: 12px; font-weight: 600; }
+    .watchlist-item .wl-remove {
+      width: 24px; text-align: center; font-size: 14px; color: var(--text-dim);
+      cursor: pointer; opacity: 0; transition: opacity 0.2s;
+    }
+    .watchlist-item:hover .wl-remove { opacity: 1; }
+    .watchlist-item .wl-remove:hover { color: var(--red); }
+    #watchlist-btn {
+      padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text-dim); font-size: 12px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    #watchlist-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+    #watchlist-btn.in-watchlist { border-color: var(--yellow); color: var(--yellow); }
+
+    /* ── share button ── */
+    #share-btn {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text-dim); font-size: 13px;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    #share-btn:hover { border-color: var(--accent); color: var(--text); }
+    #share-btn.copied { border-color: var(--green); color: var(--green); }
+
+    /* ── settings modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 1000; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      padding: 28px; width: 460px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .modal label.field {
+      display: block; margin-bottom: 14px;
+    }
+    .modal label.field span {
+      display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px;
+    }
+    .modal input[type="text"], .modal input[type="password"], .modal input[type="number"],
+    .modal select {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface2); color: var(--text); font-size: 13px; outline: none;
+      transition: border-color 0.3s;
+    }
+    .modal input:focus, .modal select:focus { border-color: var(--accent); }
+    .modal .toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px; padding: 8px 0;
+    }
+    .modal .toggle-row span { font-size: 13px; }
+    .modal .btn-row { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .modal .btn {
+      padding: 9px 20px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-size: 13px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal .btn:hover { border-color: var(--accent); }
+    .modal .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .modal .btn-primary:hover { opacity: 0.85; }
+
+    #settings-btn {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; font-size: 16px; color: var(--text); transition: all 0.3s;
+    }
+    #settings-btn:hover { border-color: var(--accent); }
+
+    /* ── LLM prediction card ── */
+    .llm-card {
+      background: var(--surface); border: 2px solid var(--accent); border-radius: 10px;
+      padding: 16px; transition: background 0.3s, border-color 0.3s;
+    }
+    .llm-card .llm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .llm-card .llm-title { font-weight: 700; font-size: 15px; color: var(--accent); }
+    .llm-card .llm-model { font-size: 11px; color: var(--text-dim); }
+    .llm-card .llm-action {
+      font-size: 28px; font-weight: 800; letter-spacing: 2px; text-align: center;
+      padding: 10px 0; border-radius: 8px; margin-bottom: 12px;
+    }
+    .llm-card .llm-prices { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .llm-card .llm-price-item {
+      background: var(--surface2); border-radius: 6px; padding: 8px; text-align: center;
+    }
+    .llm-card .llm-price-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+    .llm-card .llm-price-val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+    .llm-card .llm-confidence {
+      height: 6px; border-radius: 3px; background: var(--border); margin-bottom: 8px; overflow: hidden;
+    }
+    .llm-card .llm-confidence-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .llm-card .llm-confidence-label { font-size: 12px; color: var(--text-dim); text-align: center; margin-bottom: 10px; }
+    .llm-card .llm-reasoning { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-bottom: 10px; }
+    .llm-card .llm-factors { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+    .llm-card .llm-factor {
+      background: var(--surface2); border-radius: 4px; padding: 3px 8px;
+      font-size: 11px; color: var(--text-dim);
+    }
+    .llm-card .llm-rr { font-size: 12px; color: var(--text-dim); text-align: center; }
+    .llm-card .llm-rr strong { color: var(--text); }
+    .llm-card .llm-error { font-size: 13px; color: var(--red); text-align: center; padding: 16px; }
+    .llm-card .llm-loading { text-align: center; padding: 24px; color: var(--text-dim); }
+    .llm-card .llm-pending { text-align: center; padding: 16px; color: var(--text-dim); font-size: 13px; }
+
+    /* ── news panel ── */
+    #news-section { display: none; margin-top: 16px; }
+    #news-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+    .news-list { display: flex; flex-direction: column; gap: 8px; }
+    .news-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; cursor: pointer; transition: border-color 0.2s;
+    }
+    .news-item:hover { border-color: var(--accent); }
+    .news-item .news-title {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .news-item .news-meta { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+    .news-item .news-summary {
+      font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ── financials ── */
+    #financials-section { display: none; margin-top: 16px; }
+    #financials-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+    .fin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .fin-table th, .fin-table td {
+      padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border);
+    }
+    .fin-table th { color: var(--text-dim); font-weight: 500; }
+    .fin-table td:first-child, .fin-table th:first-child { text-align: left; }
+    .fin-table tr:hover { background: var(--surface2); }
+    .fin-metric { color: var(--text-dim); }
+    .fin-positive { color: var(--green); }
+    .fin-negative { color: var(--red); }
+
+    #predict-btn {
+      padding: 8px 18px; border-radius: 8px; border: 1px solid var(--accent);
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    #predict-btn:hover { opacity: 0.85; }
+    #predict-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #predict-btn .btn-spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+
+    /* ── skeleton loading ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-line { height: 14px; margin-bottom: 8px; }
+    .skeleton-line.short { width: 40%; }
+    .skeleton-line.medium { width: 70%; }
+    .skeleton-block { height: 120px; margin-bottom: 12px; }
+    .skeleton-card { height: 180px; margin-bottom: 12px; border-radius: 10px; }
+
+    /* ── toast notifications ── */
+    #toast-container {
+      position: fixed; top: 16px; right: 16px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+      padding: 12px 18px; border-radius: 8px; font-size: 13px;
+      pointer-events: auto; opacity: 0; transform: translateX(40px);
+      transition: all 0.3s; max-width: 360px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .toast.show { opacity: 1; transform: translateX(0); }
+    .toast-error { background: var(--red); color: #fff; }
+    .toast-warn { background: var(--yellow); color: #1a1d2e; }
+    .toast-info { background: var(--accent); color: #fff; }
+
+    /* ── chat panel ── */
+    .chat-wrap { margin-top: 12px; }
+    .chat-messages {
+      max-height: 300px; overflow-y: auto; padding: 8px;
+      background: var(--surface2); border-radius: 8px; margin-bottom: 8px;
+    }
+    .chat-msg { margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+    .chat-msg.user { color: var(--accent); }
+    .chat-msg.user::before { content: '👤 '; }
+    .chat-msg.assistant { color: var(--text); }
+    .chat-msg.assistant::before { content: '🤖 '; }
+    .chat-msg .chat-time { font-size: 10px; color: var(--text-dim); margin-left: 8px; }
+    .chat-input-row { display: flex; gap: 6px; }
+    .chat-input-row input {
+      flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text); font-size: 13px; outline: none;
+    }
+    .chat-input-row input:focus { border-color: var(--accent); }
+    .chat-input-row button {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+      background: var(--accent); color: #fff; font-size: 13px; cursor: pointer;
+    }
+
+    /* ── prediction history ── */
+    .pred-history { margin-top: 12px; }
+    .pred-history h4 { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+    .pred-entry {
+      display: flex; gap: 10px; align-items: center; padding: 6px 8px;
+      background: var(--surface2); border-radius: 6px; margin-bottom: 4px; font-size: 12px;
+    }
+    .pred-entry .pred-action { font-weight: 700; width: 50px; text-align: center; }
+    .pred-entry .pred-date { color: var(--text-dim); font-size: 11px; }
+
+    /* ── explain button ── */
+    .explain-btn {
+      background: none; border: none; cursor: pointer; font-size: 14px;
+      padding: 2px; opacity: 0.5; transition: opacity 0.2s;
+    }
+    .explain-btn:hover { opacity: 1; }
+    .explain-popup {
+      position: absolute; z-index: 50; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.6;
+      max-width: 320px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); color: var(--text);
+    }
+
+    /* ── Q&A section ── */
+    #qa-section { display: none; margin-top: 16px; }
+    #qa-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+    .qa-input-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .qa-input-row input {
+      flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text); font-size: 13px; outline: none;
+    }
+    .qa-input-row button {
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent);
+      background: var(--accent); color: #fff; font-size: 13px; cursor: pointer;
+    }
+    #qa-answer {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; font-size: 13px; line-height: 1.6; display: none; white-space: pre-wrap;
+    }
+
+    /* ── bull/bear card ── */
+    .bullbear-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .bullbear-card {
+      background: var(--surface2); border-radius: 8px; padding: 10px; font-size: 12px;
+    }
+    .bullbear-card h4 { font-size: 13px; margin-bottom: 6px; }
+    .bullbear-card .target { font-size: 18px; font-weight: 700; margin: 4px 0; }
+    .bullbear-card ul { padding-left: 16px; margin: 4px 0; }
+    .bullbear-card .prob { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+    /* ── factor editor ── */
+    #factor-section { display: none; margin-top: 16px; }
+    #factor-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+    .factor-input-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .factor-input-row input {
+      flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--surface); color: var(--text); font-size: 13px; font-family: monospace;
+      outline: none;
+    }
+    .factor-result {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; font-size: 13px; display: none;
+    }
+    .factor-result .factor-val { font-size: 20px; font-weight: 700; margin: 6px 0; }
+    .factor-lib { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .factor-lib-item {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 5px;
+      padding: 4px 8px; font-size: 11px; cursor: pointer; transition: border-color 0.2s;
+    }
+    .factor-lib-item:hover { border-color: var(--accent); }
+    #factor-chart { width: 100%; height: 150px; margin-top: 8px; display: none; }
+
+    /* ── backtest ── */
+    .bt-section { margin-top: 16px; }
+    .bt-section h4 { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+    .bt-row { display: flex; gap: 6px; margin-bottom: 8px; }
+    .bt-row input {
+      flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--surface); color: var(--text); font-size: 12px; font-family: monospace;
+      outline: none;
+    }
+    .bt-row button {
+      padding: 7px 12px; border-radius: 6px; border: 1px solid var(--green);
+      background: var(--green); color: #fff; font-size: 12px; cursor: pointer;
+    }
+    .bt-metrics {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;
+    }
+    .bt-metric {
+      background: var(--surface2); border-radius: 6px; padding: 8px; text-align: center;
+    }
+    .bt-metric .bt-label { font-size: 10px; color: var(--text-dim); }
+    .bt-metric .bt-val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+    #bt-chart { width: 100%; height: 200px; display: none; }
+    .bt-trades { max-height: 200px; overflow-y: auto; font-size: 11px; }
+    .bt-trades table { width: 100%; border-collapse: collapse; }
+    .bt-trades th, .bt-trades td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: right; }
+    .bt-trades th { color: var(--text-dim); font-weight: 500; }
+    .bt-trades td:first-child, .bt-trades th:first-child { text-align: left; }
+
+    /* ── strategy comparison ── */
+    .strat-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+    .strat-table th, .strat-table td {
+      padding: 5px 6px; border-bottom: 1px solid var(--border); text-align: right;
+    }
+    .strat-table th { color: var(--text-dim); font-weight: 500; }
+    .strat-table td:first-child, .strat-table th:first-child { text-align: left; }
+    .strat-table tr:hover { background: var(--surface2); }
+    .strat-best { background: rgba(38,166,154,0.1) !important; }
+
+    /* ── correlation heatmap ── */
+    .corr-matrix { display: inline-block; margin-top: 8px; }
+    .corr-row { display: flex; }
+    .corr-cell {
+      width: 36px; height: 28px; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; border: 1px solid var(--border); margin: -1px 0 0 -1px;
+    }
+    .corr-label { font-size: 9px; color: var(--text-dim); width: 36px; text-align: center; overflow: hidden; }
+
+    /* ── risk card ── */
+    .risk-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; margin-top: 12px;
+    }
+    .risk-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .risk-meter {
+      height: 10px; border-radius: 5px; background: var(--border); position: relative; margin: 8px 0;
+      overflow: hidden;
+    }
+    .risk-meter-fill {
+      height: 100%; border-radius: 5px; transition: width 0.5s;
+    }
+    .risk-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .risk-stat { text-align: center; }
+    .risk-stat .risk-val { font-size: 15px; font-weight: 700; }
+    .risk-stat .risk-label { font-size: 10px; color: var(--text-dim); }
+
+    /* ── save factor ── */
+    #save-factor-modal { display: none; }
+    #save-factor-modal.open { display: flex; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>StockOverflow</h1>
+    <div class="search-wrap">
+      <input id="search-input" type="text" placeholder="Search by ticker or company name..." autocomplete="off" />
+      <div id="search-results"></div>
+    </div>
+    <nav style="display:flex;gap:12px;font-size:13px">
+      <a href="/" data-nav="dashboard" data-i18n="dashboard_nav" style="color:var(--text-dim);text-decoration:none;cursor:pointer">Dashboard</a>
+      <a href="#factors" data-nav="factors" data-i18n="factor_lab_nav" style="color:var(--text-dim);text-decoration:none;cursor:pointer">Factor Lab</a>
+      <a href="#backtest" data-nav="backtest" data-i18n="backtest_nav" style="color:var(--text-dim);text-decoration:none;cursor:pointer">Backtest</a>
+    </nav>
+    <div class="header-right">
+      <button id="lang-btn" title="Language / 语言"><i data-lucide="globe" style="width:18px;height:18px"></i></button>
+      <button id="settings-btn" title="LLM Settings"><i data-lucide="settings" style="width:18px;height:18px"></i></button>
+      <button id="theme-btn" title="Toggle theme"><i data-lucide="moon" style="width:18px;height:18px"></i></button>
+    </div>
+  </header>
+  <div id="toast-container"></div>
+
+  <main>
+    <div id="stock-info">
+      <div class="header-row">
+        <span class="ticker-label" id="info-ticker"></span>
+        <span class="name-label" id="info-name"></span>
+        <span id="rt-price-badge" style="display:none;margin-left:12px"></span>
+        <button id="watchlist-btn" title="Add to watchlist">☆ Watchlist</button>
+        <button id="share-btn" title="Copy link">🔗 Share</button>
+        <button id="predict-btn" title="Run LLM prediction (p)">🔮 Predict</button>
+      </div>
+      <div class="meta-row" id="info-meta"></div>
+    </div>
+
+    <div class="content-wrap" id="content-wrap">
+      <div id="left-panel">
+        <div id="chart-container" style="position:relative">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border)">
+            <div id="timeframe-btns" style="display:flex;gap:4px">
+              <button class="tf-btn" data-tf="1d">1D</button>
+              <button class="tf-btn active" data-tf="daily">Daily</button>
+              <button class="tf-btn" data-tf="weekly">Weekly</button>
+              <button class="tf-btn" data-tf="monthly">Monthly</button>
+              <button class="tf-btn" data-tf="quarterly">Quarterly</button>
+              <button class="tf-btn" data-tf="yearly">Yearly</button>
+            </div>
+            <button id="fullscreen-btn" title="Full screen (f)" style="margin-left:auto">⛶</button>
+          </div>
+          <div id="chart"></div>
+          <div id="volume-chart"></div>
+        <div id="sub-macd" class="sub-chart-slot"></div>
+        <div id="sub-rsi" class="sub-chart-slot"></div>
+        <div id="sub-stoch" class="sub-chart-slot"></div>
+        <div id="sub-adx" class="sub-chart-slot"></div>
+        <div id="sub-cci" class="sub-chart-slot"></div>
+        <div id="sub-wr" class="sub-chart-slot"></div>
+        <div id="sub-mfi" class="sub-chart-slot"></div>
+        <div id="sub-obv" class="sub-chart-slot"></div>
+        <div id="sub-atr" class="sub-chart-slot"></div>
+        <div id="sub-fg" class="sub-chart-slot"></div>
+        </div><!-- /chart-container -->
+        <div id="news-section">
+          <h3>📰 News</h3>
+          <div class="news-list" id="news-list"></div>
+        </div>
+        <div id="financials-section">
+          <h3>📊 Financials</h3>
+          <div id="financials-content"></div>
+        </div>
+        <div id="risk-section">
+          <h3>⚠️ Risk Assessment</h3>
+          <div id="risk-content"></div>
+        </div>
+        <div id="factor-section">
+          <h3>🧪 Factor Lab</h3>
+          <div class="factor-input-row">
+            <input id="factor-input" type="text" placeholder="e.g. rsi(14) < 30 and volume > sma(volume, 20)" />
+            <button id="factor-eval-btn">Evaluate</button>
+            <button id="save-factor-btn" style="background:var(--yellow);border-color:var(--yellow)">💾 Save</button>
+          </div>
+          <div class="factor-lib" id="factor-lib"></div>
+          <div class="factor-result" id="factor-result">
+            <div id="factor-chart"></div>
+          </div>
+          <div class="bt-section">
+            <h4>📊 Backtest</h4>
+            <div class="bt-row">
+              <input id="bt-buy" type="text" placeholder="Buy signal (e.g. rsi(14) < 30)" />
+            </div>
+            <div class="bt-row">
+              <input id="bt-sell" type="text" placeholder="Sell signal (e.g. rsi(14) > 70)" />
+            </div>
+            <div class="bt-row">
+              <button id="bt-run-btn">Run Backtest</button>
+            </div>
+            <div id="bt-result"></div>
+          </div>
+          <div class="bt-section" style="margin-top:12px">
+            <h4>🔄 Compare Strategies</h4>
+            <div class="bt-row">
+              <button id="bt-compare-btn">Compare RSI vs MACD vs BB</button>
+            </div>
+            <div id="bt-compare-result"></div>
+          </div>
+          <div class="bt-section" style="margin-top:12px">
+            <h4>📊 Factor Correlation</h4>
+            <div class="bt-row">
+              <button id="corr-btn">Compute Correlation Matrix</button>
+            </div>
+            <div id="corr-result"></div>
+          </div>
+        </div>
+        <div id="qa-section">
+          <h3>💬 Ask Anything</h3>
+          <div class="qa-input-row">
+            <input id="qa-input" type="text" placeholder="e.g. What is MACD? How do I read RSI?" />
+            <button id="qa-btn">Ask</button>
+          </div>
+          <div id="qa-answer"></div>
+        </div>
+      </div><!-- /left-panel -->
+      <div class="indicators-panel" id="indicators-panel"></div>
+    </div>
+
+    <div id="loading">
+      <div class="content-wrap" style="display:grid">
+        <div>
+          <div class="skeleton skeleton-block" style="height:420px"></div>
+          <div class="skeleton skeleton-block" style="height:110px"></div>
+          <div class="skeleton skeleton-line medium"></div>
+          <div class="skeleton skeleton-line short"></div>
+        </div>
+        <div>
+          <div class="skeleton skeleton-card"></div>
+          <div class="skeleton skeleton-card"></div>
+          <div class="skeleton skeleton-card"></div>
+        </div>
+      </div>
+      <div style="text-align:center;padding:12px;color:var(--text-dim);font-size:13px">Fetching data from Yahoo Finance...</div>
+    </div>
+
+    <div id="welcome" style="display:block;text-align:center;padding:80px 20px">
+      <h2 data-i18n="search_stocks" style="color:#e1e4ea;font-size:22px;margin-bottom:8px">Search for a US stock</h2>
+      <p data-i18n="enter_ticker" style="color:#8b8fa3;margin-bottom:24px">Enter a ticker symbol or company name above</p>
+      <div style="display:inline-block;text-align:left;font-size:12px;color:#8b8fa3;line-height:2">
+        <div><kbd style="background:#2a2d3a;padding:2px 6px;border-radius:3px;font-size:11px">/</kbd> Focus search</div>
+        <div><kbd style="background:#2a2d3a;padding:2px 6px;border-radius:3px;font-size:11px">t</kbd> Toggle theme</div>
+        <div><kbd style="background:#2a2d3a;padding:2px 6px;border-radius:3px;font-size:11px">s</kbd> Settings</div>
+        <div><kbd style="background:#2a2d3a;padding:2px 6px;border-radius:3px;font-size:11px">d</kbd> Dashboard</div>
+        <div><kbd style="background:#2a2d3a;padding:2px 6px;border-radius:3px;font-size:11px">f</kbd> Fullscreen chart</div>
+      </div>
+      <noscript style="color:#ef5350;display:block;margin-top:20px">JavaScript is required. Please enable it in your browser.</noscript>
+    </div>
+
+    <div id="dashboard">
+      <!-- Market Overview -->
+      <div class="dash-card" style="margin-bottom:16px">
+        <h3 data-i18n="market_overview">📊 Market Overview</h3>
+        <div id="dash-indices" style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px"></div>
+      </div>
+
+      <!-- Watchlist Predictions -->
+      <div class="dash-card" style="margin-bottom:16px">
+        <h3 data-i18n="tomorrow_guide">⭐ Watchlist — Tomorrow's Guide</h3>
+        <div id="dash-predictions"></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-card">
+          <h3 data-i18n="account">💰 Account</h3>
+          <div id="dash-account">
+            <div class="dash-big" id="dash-equity">$100,000</div>
+            <div class="dash-sub" id="dash-return">Return: 0.00%</div>
+          </div>
+        </div>
+        <div class="dash-card">
+          <h3 data-i18n="positions">📊 Positions</h3>
+          <div id="dash-positions"><div style="color:var(--text-dim);font-size:13px">No positions yet</div></div>
+        </div>
+        <div class="dash-card">
+          <h3 data-i18n="watchlist">⭐ Watchlist</h3>
+          <div id="dash-watchlist"></div>
+        </div>
+        <div class="dash-card">
+          <h3 data-i18n="recent_stocks">🕐 Recent Stocks</h3>
+          <div id="dash-stocks" class="dash-stock-list"></div>
+        </div>
+        <div class="dash-card">
+          <h3 data-i18n="recent_preds">🔮 Recent Predictions</h3>
+          <div id="dash-preds"></div>
+        </div>
+        <div class="dash-card" style="grid-column:1/-1">
+          <h3 data-i18n="compare_stocks">📊 Compare Stocks</h3>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <input id="compare-input" type="text" placeholder="e.g. AAPL,MSFT,GOOGL" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px" />
+            <button id="compare-btn" style="padding:7px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;cursor:pointer">Compare</button>
+          </div>
+          <div id="compare-result"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <h2>⚙️ LLM Settings</h2>
+      <label class="field">
+        <span>Base URL</span>
+        <input id="cfg-base-url" type="text" placeholder="https://api.openai.com/v1" />
+      </label>
+      <label class="field">
+        <span>API Key</span>
+        <input id="cfg-api-key" type="password" placeholder="sk-..." />
+      </label>
+      <label class="field">
+        <span>Model Preset</span>
+        <select id="cfg-preset">
+          <option value="">— Custom —</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Model</span>
+        <input id="cfg-model" type="text" placeholder="gpt-4o" />
+      </label>
+      <label class="field">
+        <span>Temperature (0-1)</span>
+        <input id="cfg-temperature" type="number" step="0.1" min="0" max="1" placeholder="0.3" />
+      </label>
+      <label class="field">
+        <span>Max Tokens</span>
+        <input id="cfg-max-tokens" type="number" min="100" max="8000" placeholder="2000" />
+      </label>
+      <div class="toggle-row">
+        <span>Enable LLM Predictions</span>
+        <label class="toggle">
+          <input id="cfg-enabled" type="checkbox" />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="cfg-cancel">Cancel</button>
+        <button class="btn btn-primary" id="cfg-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ================================================================
+       Globals
+       ================================================================ */
+    const $ = id => document.getElementById(id);
+    const searchInput = $('search-input');
+    const searchResults = $('search-results');
+
+    let debounceTimer = null;
+    let candleChart = null, volumeChart = null;
+
+    // record user interaction with a stock
+    function recordInteraction(ticker, source) {
+      fetch('/api/market/interact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, source }),
+      }).catch(() => {});
+    }
+
+    // recent searches
+    function getRecentSearches() {
+      try { return JSON.parse(localStorage.getItem('recentSearches') || '[]'); } catch { return []; }
+    }
+    function addRecentSearch(ticker, name) {
+      let recent = getRecentSearches().filter(r => r.ticker !== ticker);
+      recent.unshift({ ticker, name: name || ticker });
+      localStorage.setItem('recentSearches', JSON.stringify(recent.slice(0, 10)));
+    }
+    let subCharts = {};          // { macd: chart, rsi: chart, fg: chart }
+    let overlaySeries = {};      // { bb_upper, bb_middle, bb_lower, ichi_tenkan, ... }
+    let subSeries = {};          // { macd_line, macd_signal, macd_hist, rsi_line }
+    let allCharts = [];          // for theme sync
+
+    /* ================================================================
+       Toast Notifications & Error Boundary
+       ================================================================ */
+    function showToast(msg, type = 'error', duration = 5000) {
+      const container = $('toast-container');
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, duration);
+    }
+
+    // global error boundary — suppress chart library noise
+    window.addEventListener('error', e => {
+      // ignore lightweight-charts internal errors (cross-origin script errors)
+      if (e.message === 'Script error.' || e.filename?.includes('lightweight-charts')) {
+        e.preventDefault();
+        return;
+      }
+      showToast(`Error: ${e.message}`, 'error');
+    });
+    window.addEventListener('unhandledrejection', e => {
+      const msg = String(e.reason || '');
+      if (msg.includes('lightweight') || msg.includes('chart')) {
+        e.preventDefault();
+        return;
+      }
+      showToast(`Unhandled: ${msg}`, 'error');
+    });
+
+    /* ================================================================
+       Keyboard Shortcuts
+       ================================================================ */
+    document.addEventListener('keydown', e => {
+      // ignore when typing in input/textarea
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        // Esc to blur input
+        if (e.key === 'Escape') {
+          e.target.blur();
+          searchResults.style.display = 'none';
+          settingsModal.classList.remove('open');
+        }
+        return;
+      }
+
+      // / → focus search
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInput.focus();
+        return;
+      }
+
+      // Esc → close modals, clear search
+      if (e.key === 'Escape') {
+        searchResults.style.display = 'none';
+        settingsModal.classList.remove('open');
+        searchInput.value = '';
+        return;
+      }
+
+      // t → toggle theme
+      if (e.key === 't' || e.key === 'T') {
+        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        return;
+      }
+
+      // s → open settings
+      if (e.key === 's' || e.key === 'S') {
+        settingsModal.classList.add('open');
+        loadLLMConfig();
+        return;
+      }
+
+      // d → go to dashboard
+      if (e.key === 'd' || e.key === 'D') {
+        window.location.href = '/';
+        return;
+      }
+
+      // p → run prediction
+      if ((e.key === 'p' || e.key === 'P') && currentTicker) {
+        runPrediction();
+        return;
+      }
+
+      // f → toggle fullscreen chart
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+        return;
+      }
+    });
+
+    // fullscreen toggle
+    document.addEventListener('click', e => {
+      if (e.target.id === 'fullscreen-btn') toggleFullscreen();
+    });
+
+    function toggleFullscreen() {
+      const container = $('chart-container');
+      if (!container) return;
+      container.classList.toggle('chart-fullscreen');
+      const btn = $('fullscreen-btn');
+      if (btn) btn.textContent = container.classList.contains('chart-fullscreen') ? '✕' : '⛶';
+      // resize charts after transition
+      setTimeout(() => {
+        const w = $('chart').clientWidth;
+        [candleChart, volumeChart, ...Object.values(subCharts)].forEach(c => {
+          if (c) c.applyOptions({ width: w });
+        });
+      }, 100);
+    }
+    let currentCandles = [];
+    let currentIndicators = [];
+    let currentOverall = {};
+    let currentTicker = '';
+    let activeOverlays = new Set();
+    let wsConnection = null;
+
+    /* ================================================================
+       i18n — basic Chinese/English support
+       ================================================================ */
+    const I18N = {
+      en: {
+        search_placeholder: 'Search by ticker or company name...',
+        predict_btn: '🔮 Predict',
+        share_btn: '🔗 Share',
+        watchlist_btn: '☆ Watchlist',
+        dashboard: 'Dashboard',
+        account: '💰 Account',
+        positions: '📊 Positions',
+        watchlist: '⭐ Watchlist',
+        recent_stocks: '🕐 Recent Stocks',
+        recent_preds: '🔮 Recent Predictions',
+        compare_stocks: '📊 Compare Stocks',
+        market_overview: '📊 Market Overview',
+        tomorrow_guide: "⭐ Watchlist — Tomorrow's Guide",
+        no_positions: 'No positions yet',
+        no_preds: 'No predictions yet',
+        no_watchlist: 'No stocks in watchlist. Click ☆ on any stock page to add.',
+        overall_signal: 'Overall Signal',
+        confidence: 'Confidence',
+        support: 'Support',
+        resistance: 'Resistance',
+        overlay: 'Overlay',
+        news: '📰 News',
+        financials: '📊 Financials',
+        risk: '⚠️ Risk Assessment',
+        factor_lab: '🧪 Factor Lab',
+        ask_anything: '💬 Ask Anything',
+        backtest: '📊 Backtest',
+        run_backtest: 'Run Backtest',
+        compare_btn: 'Compare RSI vs MACD vs BB',
+        llm_settings: '⚙️ LLM Settings',
+        base_url: 'Base URL',
+        api_key: 'API Key',
+        model_preset: 'Model Preset',
+        model: 'Model',
+        temperature: 'Temperature (0-1)',
+        max_tokens: 'Max Tokens',
+        enable_llm: 'Enable LLM Predictions',
+        cancel: 'Cancel',
+        save: 'Save',
+        loading: 'Fetching data from Yahoo Finance...',
+        search_stocks: 'Search for a US stock',
+        enter_ticker: 'Enter a ticker symbol or company name above',
+        factor_lab_nav: 'Factor Lab',
+        backtest_nav: 'Backtest',
+        dashboard_nav: 'Dashboard',
+        compare_hint: 'Enter tickers separated by commas',
+        chat_placeholder: 'Ask about {ticker}...',
+        ask_placeholder: 'e.g. What is MACD? How to read RSI?',
+        factor_placeholder: 'e.g. rsi(14) < 30 and volume > sma(volume, 20)',
+        buy_placeholder: 'Buy signal (e.g. rsi(14) < 30)',
+        sell_placeholder: 'Sell signal (e.g. rsi(14) > 70)',
+        export_csv: '📥 Export CSV',
+        predict_hint: 'Click Predict to run LLM analysis',
+        no_news: 'No recent news',
+        no_financials: 'No financial data',
+        no_risk: 'No risk data',
+        error_loading: 'Failed to load',
+        copied: 'Copied!',
+      },
+      zh: {
+        search_placeholder: '输入股票代码或公司名称搜索...',
+        predict_btn: '🔮 预测',
+        share_btn: '🔗 分享',
+        watchlist_btn: '☆ 自选',
+        dashboard: '首页',
+        account: '💰 账户',
+        positions: '📊 持仓',
+        watchlist: '⭐ 自选股',
+        recent_stocks: '🕐 最近股票',
+        recent_preds: '🔮 最近预测',
+        compare_stocks: '📊 股票对比',
+        market_overview: '📊 市场概览',
+        tomorrow_guide: '⭐ 自选股 — 明日交易指导',
+        no_positions: '暂无持仓',
+        no_preds: '暂无预测',
+        no_watchlist: '暂无自选股。在个股页面点击 ☆ 添加。',
+        overall_signal: '综合信号',
+        confidence: '置信度',
+        support: '支撑位',
+        resistance: '阻力位',
+        overlay: '叠加',
+        news: '📰 新闻',
+        financials: '📊 财报',
+        risk: '⚠️ 风险评估',
+        factor_lab: '🧪 因子实验室',
+        ask_anything: '💬 智能问答',
+        backtest: '📊 回测',
+        run_backtest: '运行回测',
+        compare_btn: '对比 RSI vs MACD vs BB',
+        llm_settings: '⚙️ LLM 设置',
+        base_url: '接口地址',
+        api_key: 'API 密钥',
+        model_preset: '模型预设',
+        model: '模型',
+        temperature: '温度 (0-1)',
+        max_tokens: '最大 Token',
+        enable_llm: '启用 LLM 预测',
+        cancel: '取消',
+        save: '保存',
+        loading: '正在从 Yahoo Finance 获取数据...',
+        search_stocks: '搜索股票',
+        enter_ticker: '输入股票代码或公司名称',
+        factor_lab_nav: '因子实验室',
+        backtest_nav: '回测',
+        dashboard_nav: '首页',
+        compare_hint: '输入股票代码，用逗号分隔',
+        chat_placeholder: '提问关于 {ticker} 的问题...',
+        ask_placeholder: '例如：什么是 MACD？如何看 RSI？',
+        factor_placeholder: '例如：rsi(14) < 30 和 volume > sma(volume, 20)',
+        buy_placeholder: '买入信号（例如：rsi(14) < 30）',
+        sell_placeholder: '卖出信号（例如：rsi(14) > 70）',
+        export_csv: '📥 导出 CSV',
+        predict_hint: '点击预测获取 LLM 分析',
+        no_news: '暂无新闻',
+        no_financials: '暂无财报数据',
+        no_risk: '暂无风险数据',
+        error_loading: '加载失败',
+        copied: '已复制！',
+      },
+    };
+
+    let currentLang = localStorage.getItem('lang') || (navigator.language.startsWith('zh') ? 'zh' : 'en');
+    function t(key) { return I18N[currentLang]?.[key] || I18N.en[key] || key; }
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+      // update all elements with data-i18n attribute
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        const translated = t(key);
+        if (el.tagName === 'INPUT') {
+          el.placeholder = translated;
+        } else {
+          el.textContent = translated;
+        }
+      });
+      // update search placeholder
+      const si = $('search-input');
+      if (si) si.placeholder = t('search_placeholder');
+      // update loading text
+      const lt = document.querySelector('#loading > div:last-child');
+      if (lt) lt.textContent = t('loading');
+      // update welcome
+      const wh = document.querySelector('#welcome h2');
+      if (wh) wh.textContent = t('search_stocks');
+      const wp = document.querySelector('#welcome p');
+      if (wp) wp.textContent = t('enter_ticker');
+    }
+
+    /* ================================================================
+       Theme
+       ================================================================ */
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    function getTheme() {
+      return localStorage.getItem('theme') || getSystemTheme();
+    }
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      $('theme-btn').textContent = t === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('theme', t);
+      rebuildChartsTheme();
+    }
+    $('theme-btn').addEventListener('click', () => {
+      applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+
+    // language toggle
+    $('lang-btn').addEventListener('click', () => {
+      const newLang = currentLang === 'en' ? 'zh' : 'en';
+      setLang(newLang);
+      $('lang-btn').textContent = newLang === 'en' ? '🌐' : '🌐';
+      $('lang-btn').title = newLang === 'en' ? 'Language / 语言' : '语言 / Language';
+      showToast(newLang === 'zh' ? '已切换到中文' : 'Switched to English', 'info', 2000);
+    });
+    setLang(currentLang); // apply initial language
+
+    // initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', e => {
+      if (!localStorage.getItem('theme')) applyTheme(e.matches ? 'light' : 'dark');
+    });
+    applyTheme(getTheme());
+
+    function chartThemeOpts(h) {
+      const t = document.documentElement.getAttribute('data-theme');
+      const dark = t === 'dark';
+      return {
+        layout: { background: { color: dark ? '#1a1d27' : '#ffffff' }, textColor: dark ? '#8b8fa3' : '#6b7280' },
+        grid: { vertLines: { color: dark ? '#2a2d3a' : '#e5e7eb' }, horzLines: { color: dark ? '#2a2d3a' : '#e5e7eb' } },
+        crosshair: { mode: 0 },
+        rightPriceScale: { borderColor: dark ? '#2a2d3a' : '#d8dce6' },
+        timeScale: { borderColor: dark ? '#2a2d3a' : '#d8dce6', timeVisible: false },
+        ...(h ? { height: h } : {}),
+      };
+    }
+
+    function rebuildChartsTheme() {
+      if (!candleChart) return;
+      const opts = chartThemeOpts();
+      [candleChart, volumeChart, ...Object.values(subCharts)].forEach(c => {
+        if (c) c.applyOptions(opts);
+      });
+    }
+
+    /* ================================================================
+       Search
+       ================================================================ */
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const q = searchInput.value.trim();
+      if (q.length < 1) { showRecentSearches(); return; }
+      debounceTimer = setTimeout(() => doSearch(q), 300);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      if (!searchInput.value.trim()) showRecentSearches();
+    });
+
+    function showRecentSearches() {
+      const recent = getRecentSearches();
+      if (!recent.length) { searchResults.style.display = 'none'; return; }
+      searchResults.innerHTML = `<div style="padding:8px 16px;font-size:11px;color:var(--text-dim)">Recent</div>` +
+        recent.map(r => `
+          <div class="search-item" data-ticker="${r.ticker}">
+            <span class="ticker">${r.ticker}</span>
+            <span class="name">${escHtml(r.name)}</span>
+          </div>
+        `).join('');
+      searchResults.style.display = 'block';
+      searchResults.querySelectorAll('.search-item').forEach(el => {
+        el.addEventListener('click', () => {
+          searchResults.style.display = 'none';
+          searchInput.value = el.dataset.ticker;
+          recordInteraction(el.dataset.ticker, 'search');
+          loadStock(el.dataset.ticker);
+        });
+      });
+    }
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const q = searchInput.value.trim();
+        if (q.length >= 1) { searchResults.style.display = 'none'; loadStock(q); }
+      }
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.search-wrap')) searchResults.style.display = 'none';
+    });
+
+    async function doSearch(q) {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (!data.length) { searchResults.style.display = 'none'; return; }
+        searchResults.innerHTML = data.map(r => `
+          <div class="search-item" data-ticker="${r.ticker}">
+            <span class="ticker">${r.ticker}</span>
+            <span class="name">${r.name || ''}</span>
+            <span class="exchange">${r.exchange || ''}</span>
+          </div>
+        `).join('');
+        searchResults.style.display = 'block';
+        searchResults.querySelectorAll('.search-item').forEach(el => {
+          el.addEventListener('click', () => {
+            searchResults.style.display = 'none';
+            searchInput.value = el.dataset.ticker;
+            loadStock(el.dataset.ticker);
+          });
+        });
+      } catch (err) { console.error('Search failed:', err); }
+    }
+
+    /* ================================================================
+       Load stock
+       ================================================================ */
+    async function loadStock(ticker) {
+      $('welcome').style.display = 'none';
+      $('dashboard').style.display = 'none';
+      $('stock-info').style.display = 'none';
+      $('content-wrap').style.display = 'none';
+      $('loading').style.display = 'block';
+      activeOverlays.clear();
+
+      // update URL
+      history.pushState({ ticker }, '', `/stock/${encodeURIComponent(ticker)}`);
+
+      try {
+        const res = await fetch(`/api/stock/${encodeURIComponent(ticker)}`);
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Failed to load'); }
+        const data = await res.json();
+        currentCandles = data.candles;
+        currentIndicators = data.indicators;
+        currentOverall = data.overall;
+        currentTicker = data.info.ticker;
+        addRecentSearch(currentTicker, data.info.name);
+        recordInteraction(currentTicker, 'view');
+        llmPrediction = null;
+        renderInfo(data.info);
+        renderChart(data.candles);
+        renderIndicators(data.indicators, data.overall);
+        $('content-wrap').style.display = 'grid';
+        // fetch news, financials, risk in background (non-blocking)
+        fetchAndRenderNews(currentTicker);
+        fetchAndRenderFinancials(currentTicker);
+        fetchAndRenderRisk(currentTicker);
+        checkWatchlistStatus();
+        connectWebSocket(currentTicker);
+      } catch (err) {
+        $('welcome').style.display = 'block';
+        $('welcome').innerHTML = `<h2 style="color:var(--red)">Error</h2><p>${escHtml(err.message)}</p>`;
+        showToast(err.message, 'error');
+      } finally { $('loading').style.display = 'none'; }
+    }
+
+    /* ================================================================
+       News
+       ================================================================ */
+    async function fetchAndRenderNews(ticker) {
+      const section = $('news-section');
+      const list = $('news-list');
+      list.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Loading news...</div>';
+      section.style.display = 'block';
+      try {
+        const res = await fetch(`/api/stock/${encodeURIComponent(ticker)}/news?limit=8`);
+        const news = await res.json();
+        if (!news.length) {
+          list.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No recent news found.</div>';
+          return;
+        }
+        list.innerHTML = news.map(n => `
+          <a class="news-item" href="${escHtml(n.url)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">
+            <div class="news-title">${escHtml(n.title)}</div>
+            <div class="news-meta">${escHtml(n.publisher)} · ${n.published_at ? n.published_at.slice(0,10) : ''}</div>
+            ${n.summary ? `<div class="news-summary">${escHtml(n.summary)}</div>` : ''}
+          </a>
+        `).join('');
+      } catch (err) {
+        list.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Failed to load news.</div>';
+      }
+    }
+
+    /* ================================================================
+       Financials
+       ================================================================ */
+    async function fetchAndRenderFinancials(ticker) {
+      const section = $('financials-section');
+      const content = $('financials-content');
+      content.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Loading financials...</div>';
+      section.style.display = 'block';
+      try {
+        const res = await fetch(`/api/stock/${encodeURIComponent(ticker)}/financials`);
+        const data = await res.json();
+        let html = '';
+
+        // quarterly financials table
+        const fin = data.financials;
+        if (fin?.data?.length && fin.periods?.length) {
+          const periods = fin.periods.slice(0, 4);
+          html += '<table class="fin-table"><thead><tr><th>Metric</th>';
+          periods.forEach(p => { html += `<th>${p.slice(0,7)}</th>`; });
+          html += '</tr></thead><tbody>';
+          fin.data.forEach(row => {
+            html += `<tr><td class="fin-metric">${escHtml(row.metric)}</td>`;
+            periods.forEach(p => {
+              const v = row[p];
+              if (v == null) { html += '<td>—</td>'; }
+              else {
+                const abs = Math.abs(v);
+                const display = abs >= 1e9 ? `$${(v/1e9).toFixed(1)}B` : abs >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${v.toFixed(0)}`;
+                const cls = v >= 0 ? 'fin-positive' : 'fin-negative';
+                html += `<td class="${cls}">${display}</td>`;
+              }
+            });
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+
+        // earnings
+        const earn = data.earnings;
+        if (earn?.data?.length) {
+          html += '<table class="fin-table" style="margin-top:12px"><thead><tr><th>Quarter</th><th>EPS Actual</th><th>EPS Est</th><th>Surprise</th></tr></thead><tbody>';
+          earn.data.slice(0, 4).forEach(e => {
+            const q = e.index || e.quarter || '';
+            html += `<tr><td>${escHtml(q)}</td>`;
+            html += `<td>${e.epsActual != null ? e.epsActual : '—'}</td>`;
+            html += `<td>${e.epsEstimate != null ? e.epsEstimate : '—'}</td>`;
+            const sp = e.surprise;
+            html += `<td class="${sp > 0 ? 'fin-positive' : sp < 0 ? 'fin-negative' : ''}">${sp != null ? (sp*100).toFixed(1)+'%' : '—'}</td>`;
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+
+        content.innerHTML = html || '<div style="color:var(--text-dim);font-size:13px">No financial data available.</div>';
+      } catch (err) {
+        content.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Failed to load financials.</div>';
+      }
+    }
+
+    /* ================================================================
+       Risk Assessment
+       ================================================================ */
+    async function fetchAndRenderRisk(ticker) {
+      const section = $('risk-section');
+      const content = $('risk-content');
+      if (!section || !content) return;
+      content.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Computing risk...</div>';
+      section.style.display = 'block';
+      try {
+        const res = await fetch(`/api/stock/${encodeURIComponent(ticker)}/risk`);
+        const data = await res.json();
+        if (data.error) { content.innerHTML = `<div style="color:var(--red);font-size:13px">${escHtml(data.error)}</div>`; return; }
+
+        const score = data.risk_score || 0;
+        const level = data.risk_level || 'LOW';
+        const levelColor = level === 'HIGH' ? 'var(--red)' : level === 'MEDIUM' ? 'var(--yellow)' : 'var(--green)';
+
+        content.innerHTML = `
+          <div class="risk-card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600">Risk Level</span>
+              <span style="font-weight:700;color:${levelColor}">${level} (${score}/100)</span>
+            </div>
+            <div class="risk-meter">
+              <div class="risk-meter-fill" style="width:${score}%;background:${levelColor}"></div>
+            </div>
+            <div class="risk-stats">
+              <div class="risk-stat"><div class="risk-val">${data.annual_volatility}%</div><div class="risk-label">Annual Vol</div></div>
+              <div class="risk-stat"><div class="risk-val" style="color:var(--red)">${data.max_drawdown}%</div><div class="risk-label">Max Drawdown</div></div>
+              <div class="risk-stat"><div class="risk-val">${data.sharpe_ratio}</div><div class="risk-label">Sharpe</div></div>
+              <div class="risk-stat"><div class="risk-val">${data.daily_var_5pct}%</div><div class="risk-label">VaR (5%)</div></div>
+              <div class="risk-stat"><div class="risk-val">${data.avg_daily_return}%</div><div class="risk-label">Avg Daily</div></div>
+              <div class="risk-stat"><div class="risk-val">${data.positive_days_pct}%</div><div class="risk-label">Up Days</div></div>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        content.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Failed to load risk data.</div>';
+      }
+    }
+
+    /* ================================================================
+       Save Custom Factor
+       ================================================================ */
+    document.addEventListener('click', e => {
+      if (e.target.id === 'save-factor-btn') saveCustomFactor();
+    });
+
+    async function saveCustomFactor() {
+      const input = $('factor-input');
+      if (!input) return;
+      const expr = input.value.trim();
+      if (!expr) { showToast('Enter a factor expression first', 'warn'); return; }
+
+      const name = prompt('Factor name:');
+      if (!name) return;
+
+      try {
+        const res = await fetch('/api/factors/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, expression: expr, description: `Custom: ${expr}` }),
+        });
+        const data = await res.json();
+        if (data.error || data.detail) {
+          showToast(data.detail || data.error, 'error');
+        } else {
+          showToast(`Factor "${name}" saved!`, 'info');
+          loadFactorLibrary(); // refresh library
+        }
+      } catch (e) { showToast('Failed to save factor', 'error'); }
+    }
+
+    /* ================================================================
+       URL Routing
+       ================================================================ */
+    // handle back/forward navigation
+    window.addEventListener('popstate', e => {
+      const ticker = e.state?.ticker || parseURLTicker();
+      if (ticker) loadStock(ticker);
+    });
+
+    function parseURLTicker() {
+      const m = window.location.pathname.match(/^\/stock\/([A-Z.]+)/i);
+      return m ? m[1].toUpperCase() : null;
+    }
+
+    // on page load, check URL for stock ticker or hash route
+    (async function() {
+      try {
+        const hash = window.location.hash;
+        if (hash === '#factors') {
+          showFactorLabPage();
+        } else if (hash === '#backtest') {
+          showBacktestPage();
+        } else {
+          const ticker = parseURLTicker();
+          if (ticker) {
+            searchInput.value = ticker;
+            loadStock(ticker);
+          } else {
+            await loadDashboard();
+          }
+        }
+      } catch (e) {
+        console.error('Init failed:', e);
+        // ensure welcome is visible on any error
+        const w = document.getElementById('welcome');
+        if (w) w.style.display = 'block';
+      }
+    })();
+
+    /* ================================================================
+       Watchlist
+       ================================================================ */
+    document.addEventListener('click', e => {
+      if (e.target.id === 'watchlist-btn' || e.target.closest('#watchlist-btn')) {
+        toggleWatchlist();
+      }
+      if (e.target.classList.contains('wl-remove')) {
+        e.stopPropagation();
+        removeWatchlist(e.target.dataset.ticker);
+      }
+      if (e.target.closest('.watchlist-item') && !e.target.classList.contains('wl-remove')) {
+        const ticker = e.target.closest('.watchlist-item').dataset.ticker;
+        if (ticker) { searchInput.value = ticker; loadStock(ticker); }
+      }
+    });
+
+    async function toggleWatchlist() {
+      if (!currentTicker) return;
+      const btn = $('watchlist-btn');
+      const isIn = btn.classList.contains('in-watchlist');
+      try {
+        if (isIn) {
+          await fetch(`/api/watchlist/${currentTicker}`, { method: 'DELETE' });
+          btn.classList.remove('in-watchlist');
+          btn.textContent = '☆ Watchlist';
+          showToast(`${currentTicker} removed from watchlist`, 'info', 2000);
+        } else {
+          await fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker: currentTicker, name: $('info-name')?.textContent || '' }),
+          });
+          btn.classList.add('in-watchlist');
+          btn.textContent = '★ Watchlist';
+          showToast(`${currentTicker} added to watchlist`, 'info', 2000);
+        }
+      } catch (e) { console.error('Watchlist toggle failed:', e); }
+    }
+
+    async function checkWatchlistStatus() {
+      if (!currentTicker) return;
+      try {
+        const res = await fetch(`/api/watchlist/${currentTicker}/check`);
+        const data = await res.json();
+        const btn = $('watchlist-btn');
+        if (btn) {
+          if (data.in_watchlist) {
+            btn.classList.add('in-watchlist');
+            btn.textContent = '★ Watchlist';
+          } else {
+            btn.classList.remove('in-watchlist');
+            btn.textContent = '☆ Watchlist';
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function removeWatchlist(ticker) {
+      try {
+        await fetch(`/api/watchlist/${ticker}`, { method: 'DELETE' });
+        showToast(`${ticker} removed`, 'info', 2000);
+        loadDashboard(); // refresh dashboard
+      } catch (e) { console.error('Remove watchlist failed:', e); }
+    }
+
+    async function loadMarketOverview() {
+      try {
+        const res = await fetch('/api/market/indices');
+        const indices = await res.json();
+        const el = $('dash-indices');
+        if (!el) return;
+        el.innerHTML = indices.map(idx => {
+          const c = idx.change_pct >= 0 ? 'var(--green)' : 'var(--red)';
+          const arrow = idx.change_pct >= 0 ? '▲' : '▼';
+          return `<span style="cursor:pointer" onclick="searchInput.value='${idx.ticker}';loadStock('${idx.ticker}')">
+            <strong>${idx.name}</strong>
+            <span style="color:${c}">${arrow}${Math.abs(idx.change_pct)}%</span>
+          </span>`;
+        }).join('');
+      } catch (e) {}
+    }
+
+    async function loadWatchlistPredictions() {
+      try {
+        const res = await fetch('/api/watchlist/predictions');
+        const items = await res.json();
+        const el = $('dash-predictions');
+        if (!el) return;
+        if (!items.length) {
+          el.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No watchlist stocks with predictions yet. Add stocks to watchlist and run predictions.</div>';
+          return;
+        }
+
+        let html = '<table class="strat-table"><thead><tr><th>Ticker</th><th>Price</th><th>Signal</th><th>Limit Price</th><th>Stop Loss</th><th>Take Profit</th><th>Confidence</th></tr></thead><tbody>';
+        for (const item of items) {
+          const p = item.prediction;
+          const ac = p?.action === 'BUY' ? 'var(--green)' : p?.action === 'SELL' ? 'var(--red)' : 'var(--yellow)';
+          html += `<tr style="cursor:pointer" onclick="searchInput.value='${item.ticker}';loadStock('${item.ticker}')">
+            <td style="color:var(--accent);font-weight:600">${item.ticker}</td>
+            <td>${item.price ? fmtPrice(item.price) : '—'}</td>
+            <td style="color:${ac};font-weight:700">${p?.action || '—'}</td>
+            <td>${p?.buy_price ? fmtPrice(p.buy_price) : (p?.sell_price ? fmtPrice(p.sell_price) : '—')}</td>
+            <td style="color:var(--red)">${p?.stop_loss ? fmtPrice(p.stop_loss) : '—'}</td>
+            <td style="color:var(--green)">${p?.take_profit ? fmtPrice(p.take_profit) : '—'}</td>
+            <td>${p?.confidence ? p.confidence + '%' : '—'}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        el.innerHTML = html;
+      } catch (e) {}
+    }
+
+    async function loadWatchlistDashboard() {
+      try {
+        const res = await fetch('/api/watchlist');
+        const items = await res.json();
+        const el = $('dash-watchlist');
+        if (!el) return;
+        if (!items.length) {
+          el.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No stocks in watchlist. Click ☆ on any stock page to add.</div>';
+          return;
+        }
+        el.innerHTML = items.map(item => {
+          const c = item.change_pct >= 0 ? 'var(--green)' : 'var(--red)';
+          const sign = item.change_pct >= 0 ? '+' : '';
+          return `<div class="watchlist-item" data-ticker="${item.ticker}">
+            <span class="wl-ticker">${item.ticker}</span>
+            <span class="wl-name">${escHtml(item.name)}</span>
+            <span class="wl-price">${item.price ? fmtPrice(item.price) : '—'}</span>
+            <span class="wl-change" style="color:${c}">${item.change_pct != null ? sign + item.change_pct + '%' : '—'}</span>
+            <span class="wl-remove" data-ticker="${item.ticker}">✕</span>
+          </div>`;
+        }).join('');
+      } catch (e) { console.error('Watchlist load failed:', e); }
+    }
+
+    /* ================================================================
+       Share
+       ================================================================ */
+    document.addEventListener('click', e => {
+      if (e.target.id === 'share-btn') {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+          const btn = $('share-btn');
+          btn.textContent = '✓ Copied!';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.textContent = '🔗 Share';
+            btn.classList.remove('copied');
+          }, 2000);
+        }).catch(() => {
+          showToast('Failed to copy link', 'error');
+        });
+      }
+    });
+
+    /* ================================================================
+       Dashboard
+       ================================================================ */
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard');
+        const data = await res.json();
+        const dash = $('dashboard');
+        const welcome = $('welcome');
+        if (dash) dash.style.display = 'block';
+        if (welcome) welcome.style.display = 'none';
+
+        // account
+        const acct = data.account || {};
+        const equity = acct.total_equity || 100000;
+        const ret = acct.total_return_pct || 0;
+        const retColor = ret >= 0 ? 'var(--green)' : 'var(--red)';
+        $('dash-equity').textContent = fmtPrice(equity);
+        $('dash-return').innerHTML = `Return: <span style="color:${retColor}">${ret >= 0 ? '+' : ''}${ret}%</span>`;
+
+        // positions
+        const positions = acct.positions || [];
+        const posEl = $('dash-positions');
+        if (posEl) {
+          if (positions.length) {
+            posEl.innerHTML = positions.map(p => {
+              const c = p.unrealized_pnl >= 0 ? 'var(--green)' : 'var(--red)';
+              return `<div class="dash-pred-item">
+                <span style="font-weight:600;color:var(--accent);width:60px">${p.ticker}</span>
+                <span style="flex:1">${p.quantity} shares @ ${fmtPrice(p.avg_cost)}</span>
+                <span style="color:${c}">${p.unrealized_pnl >= 0 ? '+' : ''}${fmtPrice(p.unrealized_pnl)}</span>
+              </div>`;
+            }).join('');
+          } else {
+            posEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No positions yet</div>';
+          }
+        }
+
+        // recent stocks
+        const stocks = data.recent_stocks || [];
+        const stocksEl = $('dash-stocks');
+        if (stocksEl) {
+          stocksEl.innerHTML = stocks.map(s =>
+            `<span class="dash-stock-chip" data-ticker="${s.ticker}">${s.ticker}</span>`
+          ).join('');
+          stocksEl.querySelectorAll('.dash-stock-chip').forEach(el => {
+            el.addEventListener('click', () => {
+              searchInput.value = el.dataset.ticker;
+              loadStock(el.dataset.ticker);
+            });
+          });
+        }
+
+        // recent predictions
+        const preds = data.recent_predictions || [];
+        const predsEl = $('dash-preds');
+        if (predsEl) {
+          if (preds.length) {
+            predsEl.innerHTML = preds.map(p => {
+              const ac = p.action === 'BUY' ? 'var(--green)' : p.action === 'SELL' ? 'var(--red)' : 'var(--yellow)';
+              return `<div class="dash-pred-item">
+                <span style="font-weight:600;color:var(--accent);width:60px">${p.ticker}</span>
+                <span style="color:${ac};font-weight:700;width:50px">${p.action || '?'}</span>
+                <span style="flex:1;color:var(--text-dim)">${p.confidence || 0}% confidence</span>
+                <span style="color:var(--text-dim);font-size:11px">${(p.created_at || '').slice(0, 10)}</span>
+              </div>`;
+            }).join('');
+          } else {
+            predsEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No predictions yet</div>';
+          }
+        }
+
+        // load market data (separate calls, non-blocking)
+        loadMarketOverview();
+        loadWatchlistPredictions();
+        loadWatchlistDashboard();
+      } catch (e) {
+        console.error('Dashboard load failed:', e);
+        // ensure welcome is visible on dashboard failure
+        const w = document.getElementById('welcome');
+        if (w) w.style.display = 'block';
+      }
+    }
+
+    /* ================================================================
+       Info
+       ================================================================ */
+    function renderInfo(info) {
+      $('info-ticker').textContent = info.ticker;
+      $('info-name').textContent = info.name || '';
+      const cur = info.currency || 'USD';
+      const parts = [];
+      if (info.exchange) parts.push(`Exchange: <span class="value">${info.exchange}</span>`);
+      if (info.sector) parts.push(`Sector: <span class="value">${info.sector}</span>`);
+      if (info.industry) parts.push(`Industry: <span class="value">${info.industry}</span>`);
+      if (info.market_cap) parts.push(`Mkt Cap: <span class="value">${fmtCap(info.market_cap, cur)}</span>`);
+      if (info.currency) parts.push(`<span class="value">${cur}</span>`);
+      $('info-meta').innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+      $('stock-info').style.display = 'block';
+    }
+    function fmtCap(v, cur) {
+      const prefix = cur === 'USD' ? '$' : (cur || '') + ' ';
+      if (v >= 1e12) return prefix + (v/1e12).toFixed(2)+'T';
+      if (v >= 1e9) return prefix + (v/1e9).toFixed(2)+'B';
+      if (v >= 1e6) return prefix + (v/1e6).toFixed(2)+'M';
+      return prefix + v.toLocaleString();
+    }
+
+    /* ================================================================
+       Chart — main + volume
+       ================================================================ */
+    function renderChart(candles) {
+      // destroy everything
+      [candleChart, volumeChart, ...Object.values(subCharts)].forEach(c => { if (c) c.remove(); });
+      candleChart = volumeChart = null;
+      subCharts = {};
+      overlaySeries = {};
+      subSeries = {};
+      allCharts = [];
+      $('chart').innerHTML = '';
+      $('volume-chart').innerHTML = '';
+      ['sub-macd','sub-rsi','sub-stoch','sub-adx','sub-cci','sub-wr','sub-mfi','sub-obv','sub-atr','sub-fg'].forEach(id => {
+        $(id).style.display = 'none'; $(id).innerHTML = '';
+      });
+
+      const opts = chartThemeOpts();
+
+      // main candlestick
+      candleChart = LightweightCharts.createChart($('chart'), { ...opts, width: $('chart').clientWidth, height: 420 });
+      const cs = candleChart.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350',
+        borderDownColor: '#ef5350', borderUpColor: '#26a69a',
+        wickDownColor: '#ef5350', wickUpColor: '#26a69a',
+      });
+      try {
+        cs.setData(candles.map(c => ({ time: c.date, open: c.open, high: c.high, low: c.low, close: c.close })));
+      } catch(_) {}
+      candleChart.timeScale().fitContent();
+      allCharts.push(candleChart);
+      window._candleSeries = cs;
+
+      // volume
+      volumeChart = LightweightCharts.createChart($('volume-chart'), { ...opts, width: $('volume-chart').clientWidth, height: 110 });
+      const vs = volumeChart.addHistogramSeries({ color: '#4a9eff', priceFormat: { type: 'volume' }, priceScaleId: '' });
+      vs.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+      try {
+        vs.setData(candles.map(c => ({ time: c.date, value: c.volume, color: c.close >= c.open ? '#26a69a44' : '#ef535044' })));
+      } catch(_) {}
+      volumeChart.timeScale().fitContent();
+      allCharts.push(volumeChart);
+      window._volumeSeries = vs;
+
+      // sync crosshairs & scroll
+      syncTimeScales();
+
+      // zoom-aware data loading + zoom limit
+      let intradayLoaded = false;
+      const MIN_VISIBLE_BARS = 10;
+      candleChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+        if (_syncing || !range) return;
+
+        const visibleBars = range.to - range.from;
+
+        // prevent zooming in too far — bounce back if too few bars
+        if (visibleBars < MIN_VISIBLE_BARS) {
+          try {
+            const mid = (range.to + range.from) / 2;
+            candleChart.timeScale().setVisibleLogicalRange({
+              from: mid - MIN_VISIBLE_BARS / 2,
+              to: mid + MIN_VISIBLE_BARS / 2,
+            });
+          } catch (_) {}
+          return;
+        }
+
+        // fetch intraday when zoomed in
+        if (!intradayLoaded && visibleBars < 60 && currentTicker) {
+          intradayLoaded = true;
+          loadIntradayData(currentTicker, cs);
+        }
+      });
+
+      // timeframe buttons
+      document.querySelectorAll('.tf-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          switchTimeframe(btn.dataset.tf);
+        });
+      });
+
+      // resize
+      new ResizeObserver(() => {
+        const w = $('chart').clientWidth;
+        [candleChart, volumeChart, ...Object.values(subCharts)].forEach(c => { if (c) c.applyOptions({ width: w }); });
+      }).observe($('chart'));
+    }
+
+    async function switchTimeframe(timeframe) {
+      if (!currentTicker) return;
+      try {
+        const res = await fetch(`/api/stock/${encodeURIComponent(currentTicker)}/candles?timeframe=${timeframe}`);
+        const data = await res.json();
+        if (!data || !data.length) { showToast('No data for this timeframe', 'warn'); return; }
+
+        // completely rebuild charts with new data
+        renderChart(data.map(c => ({
+          date: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume,
+        })));
+      } catch (e) {
+        showToast('Failed to load timeframe data', 'error');
+      }
+    }
+
+    async function loadIntradayData(ticker, candleSeries) {
+      try {
+        const res = await fetch(`/api/stock/${encodeURIComponent(ticker)}/intraday?period=5d&interval=5m`);
+        const data = await res.json();
+        if (!data || !data.length) return;
+        // add intraday data as additional candles (they use ISO timestamps)
+        const intradayData = data.map(c => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        })).filter(c => c.time && c.open != null);
+        if (!intradayData.length) return;
+        // merge with existing daily data
+        try {
+          candleSeries.setData([...currentCandles.map(c => ({
+            time: c.date, open: c.open, high: c.high, low: c.low, close: c.close,
+          })), ...intradayData]);
+        } catch (_) {
+          // fallback: just keep daily data if merge fails
+        }
+      } catch (e) {
+        // silently ignore intraday fetch errors
+      }
+    }
+
+    let _syncing = false; // guard against recursive sync
+    function syncTimeScales() {
+      const all = allCharts;
+      for (let i = 0; i < all.length; i++) {
+        for (let j = 0; j < all.length; j++) {
+          if (i === j) continue;
+          const a = all[i], b = all[j];
+          a.timeScale().subscribeVisibleLogicalRangeChange(r => {
+            if (_syncing || !r) return;
+            _syncing = true;
+            try { b.timeScale().setVisibleLogicalRange(r); } catch(_) {}
+            _syncing = false;
+          });
+        }
+      }
+    }
+
+    /* ================================================================
+       Indicator overlays / sub-charts
+       ================================================================ */
+    function toggleOverlay(indName, on) {
+      if (on) activeOverlays.add(indName);
+      else activeOverlays.delete(indName);
+
+      switch (indName) {
+        case 'Bollinger Bands': toggleBB(on); break;
+        case 'Ichimoku':        toggleIchimoku(on); break;
+        case 'MACD':            toggleMACD(on); break;
+        case 'RSI':             toggleRSI(on); break;
+        case 'TD Sequential':   toggleTD(on); break;
+        case 'CNN Fear & Greed': toggleFG(on); break;
+        case 'VWAP':            toggleVWAP(on); break;
+        case 'Parabolic SAR':   toggleSAR(on); break;
+        case 'Fibonacci':       toggleFib(on); break;
+        // oscillators with sub-charts
+        case 'Stochastic':      toggleOscillator(on, 'stoch', 'sub-stoch', [
+          {key:'k', color:'#2196f3', width:2, label:'%K'},
+          {key:'d', color:'#ff9800', width:1, label:'%D'}
+        ], {hlines:[{v:80,c:'#ef535066'},{v:20,c:'#26a69a66'}], h:130}); break;
+        case 'ADX':             toggleOscillator(on, 'adx', 'sub-adx', [
+          {key:'adx', color:'#ff9800', width:2, label:'ADX'},
+          {key:'plus_di', color:'#26a69a', width:1, label:'+DI'},
+          {key:'minus_di', color:'#ef5350', width:1, label:'-DI'}
+        ], {hlines:[{v:25,c:'#8b8fa344'}], h:130}); break;
+        case 'CCI':             toggleOscillator(on, 'cci', 'sub-cci', [
+          {key:'cci', color:'#4a9eff', width:2, label:'CCI'}
+        ], {hlines:[{v:100,c:'#ef535066'},{v:-100,c:'#26a69a66'},{v:0,c:'#8b8fa344'}], h:130}); break;
+        case 'Williams %R':     toggleOscillator(on, 'wr', 'sub-wr', [
+          {key:'wr', color:'#ab47bc', width:2, label:'%R'}
+        ], {hlines:[{v:-20,c:'#ef535066'},{v:-80,c:'#26a69a66'}], h:130}); break;
+        case 'MFI':             toggleOscillator(on, 'mfi', 'sub-mfi', [
+          {key:'mfi', color:'#00bcd4', width:2, label:'MFI'}
+        ], {hlines:[{v:80,c:'#ef535066'},{v:20,c:'#26a69a66'},{v:50,c:'#8b8fa344'}], h:130}); break;
+        case 'OBV':             toggleOscillator(on, 'obv', 'sub-obv', [
+          {key:'obv', color:'#4a9eff', width:2, label:'OBV'},
+          {key:'obv_sma', color:'#ff9800', width:1, label:'SMA'}
+        ], {h:130}); break;
+        case 'ATR':             toggleOscillator(on, 'atr', 'sub-atr', [
+          {key:'atr', color:'#ff7043', width:2, label:'ATR'}
+        ], {h:120}); break;
+      }
+    }
+
+    /* ── Bollinger Bands — overlay on main chart ── */
+    function toggleBB(on) {
+      const key = 'bb';
+      if (!on) {
+        ['bb_upper','bb_middle','bb_lower'].forEach(k => {
+          if (overlaySeries[k]) { candleChart.removeSeries(overlaySeries[k]); delete overlaySeries[k]; }
+        });
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'Bollinger Bands');
+      if (!ind || !ind.series) return;
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+
+      overlaySeries.bb_upper = candleChart.addLineSeries({ color: '#ff9800', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+      overlaySeries.bb_middle = candleChart.addLineSeries({ color: '#ff9800', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+      overlaySeries.bb_lower = candleChart.addLineSeries({ color: '#ff9800', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+
+      const makeData = (arr) => candleDates.map((d, i) => {
+        const v = arr[offset + i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+
+      overlaySeries.bb_upper.setData(makeData(ind.series.upper));
+      overlaySeries.bb_middle.setData(makeData(ind.series.middle));
+      overlaySeries.bb_lower.setData(makeData(ind.series.lower));
+    }
+
+    /* ── Ichimoku — overlay on main chart ── */
+    function toggleIchimoku(on) {
+      const keys = ['ichi_tenkan','ichi_kijun','ichi_senkou_a','ichi_senkou_b'];
+      if (!on) {
+        keys.forEach(k => {
+          if (overlaySeries[k]) { candleChart.removeSeries(overlaySeries[k]); delete overlaySeries[k]; }
+        });
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'Ichimoku');
+      if (!ind || !ind.series) return;
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+
+      const configs = [
+        { key: 'ichi_tenkan',   data: ind.series.tenkan,   color: '#2196f3', width: 1 },
+        { key: 'ichi_kijun',    data: ind.series.kijun,    color: '#f44336', width: 1 },
+        { key: 'ichi_senkou_a', data: ind.series.senkou_a, color: '#4caf50', width: 1, style: 2 },
+        { key: 'ichi_senkou_b', data: ind.series.senkou_b, color: '#9c27b0', width: 1, style: 2 },
+      ];
+
+      for (const cfg of configs) {
+        overlaySeries[cfg.key] = candleChart.addLineSeries({
+          color: cfg.color, lineWidth: cfg.width,
+          lineStyle: cfg.style || 0,
+          priceLineVisible: false, lastValueVisible: false,
+        });
+        const data = candleDates.map((d, i) => {
+          const v = cfg.data[offset + i];
+          return v != null ? { time: d, value: v } : null;
+        }).filter(Boolean);
+        overlaySeries[cfg.key].setData(data);
+      }
+    }
+
+    /* ── MACD — sub-chart ── */
+    function toggleMACD(on) {
+      const slot = $('sub-macd');
+      if (!on) {
+        slot.style.display = 'none'; slot.innerHTML = '';
+        if (subCharts.macd) { subCharts.macd.remove(); delete subCharts.macd; }
+        ['macd_line','macd_signal','macd_hist'].forEach(k => delete subSeries[k]);
+        allCharts = allCharts.filter(c => c !== subCharts.macd);
+        syncTimeScales();
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'MACD');
+      if (!ind || !ind.series) return;
+      slot.style.display = 'block';
+
+      const opts = chartThemeOpts(150);
+      subCharts.macd = LightweightCharts.createChart(slot, { ...opts, width: $('chart').clientWidth });
+      allCharts.push(subCharts.macd);
+
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+      const mapData = (arr) => candleDates.map((d, i) => {
+        const v = arr[offset + i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+
+      // histogram
+      subSeries.macd_hist = subCharts.macd.addHistogramSeries({
+        color: '#4a9eff', priceFormat: { type: 'price', precision: 4, minMove: 0.0001 },
+        priceScaleId: 'macd',
+      });
+      subSeries.macd_hist.setData(mapData(ind.series.histogram).map(d => ({
+        ...d, color: d.value >= 0 ? '#26a69a88' : '#ef535088',
+      })));
+
+      // macd line
+      subSeries.macd_line = subCharts.macd.addLineSeries({ color: '#4a9eff', lineWidth: 2, priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false });
+      subSeries.macd_line.setData(mapData(ind.series.macd));
+
+      // signal line
+      subSeries.macd_signal = subCharts.macd.addLineSeries({ color: '#ff9800', lineWidth: 1, priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false });
+      subSeries.macd_signal.setData(mapData(ind.series.signal));
+
+      subCharts.macd.timeScale().fitContent();
+      syncTimeScales();
+    }
+
+    /* ── RSI — sub-chart ── */
+    function toggleRSI(on) {
+      const slot = $('sub-rsi');
+      if (!on) {
+        slot.style.display = 'none'; slot.innerHTML = '';
+        if (subCharts.rsi) { subCharts.rsi.remove(); delete subCharts.rsi; }
+        delete subSeries.rsi_line;
+        allCharts = allCharts.filter(c => c !== subCharts.rsi);
+        syncTimeScales();
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'RSI');
+      if (!ind || !ind.series) return;
+      slot.style.display = 'block';
+
+      const opts = chartThemeOpts(150);
+      subCharts.rsi = LightweightCharts.createChart(slot, { ...opts, width: $('chart').clientWidth });
+      allCharts.push(subCharts.rsi);
+
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+      const mapData = (arr) => candleDates.map((d, i) => {
+        const v = arr[offset + i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+
+      subSeries.rsi_line = subCharts.rsi.addLineSeries({
+        color: '#ab47bc', lineWidth: 2,
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        priceLineVisible: false, lastValueVisible: false,
+      });
+      subSeries.rsi_line.setData(mapData(ind.series.rsi));
+
+      // 30/70 reference lines
+      const hline70 = subCharts.rsi.addLineSeries({ color: '#ef535066', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+      const hline30 = subCharts.rsi.addLineSeries({ color: '#26a69a66', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+      hline70.setData(mapData(ind.series.rsi).map(d => ({ time: d.time, value: 70 })));
+      hline30.setData(mapData(ind.series.rsi).map(d => ({ time: d.time, value: 30 })));
+
+      subCharts.rsi.priceScale().applyOptions({ scaleMargins: { top: 0.05, bottom: 0.05 } });
+      subCharts.rsi.timeScale().fitContent();
+      syncTimeScales();
+    }
+
+    /* ── TD Sequential — overlay markers on main chart ── */
+    function toggleTD(on) {
+      if (!on) {
+        if (overlaySeries.td_markers) { candleChart.removeSeries(overlaySeries.td_markers); delete overlaySeries.td_markers; }
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'TD Sequential');
+      if (!ind || !ind.series) return;
+
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+      const buyC = ind.series.buy_counts;
+      const sellC = ind.series.sell_counts;
+
+      // use a histogram with markers for buy/sell setups
+      overlaySeries.td_markers = candleChart.addHistogramSeries({
+        priceScaleId: 'td',
+        priceLineVisible: false, lastValueVisible: false,
+      });
+      overlaySeries.td_markers.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0.85 } });
+
+      const data = candleDates.map((d, i) => {
+        const bi = buyC[offset + i] || 0;
+        const si = sellC[offset + i] || 0;
+        if (bi >= 9) return { time: d, value: 0, color: '#26a69a' };
+        if (si >= 9) return { time: d, value: 0, color: '#ef5350' };
+        if (bi >= 7) return { time: d, value: 0, color: '#26a69a44' };
+        if (si >= 7) return { time: d, value: 0, color: '#ef535044' };
+        return null;
+      }).filter(Boolean);
+      overlaySeries.td_markers.setData(data);
+    }
+
+    /* ================================================================
+       Indicators panel
+       ================================================================ */
+    function renderIndicators(indicators, overall) {
+      const panel = $('indicators-panel');
+      let html = '';
+
+      // overall card
+      const sigCls = signalClass(overall.signal);
+      const barPct = Math.max(0, Math.min(100, (overall.score + 100) / 2));
+      const barColor = overall.score > 0 ? 'var(--green)' : overall.score < 0 ? 'var(--red)' : 'var(--text-dim)';
+      html += `
+        <div class="overall-card">
+          <div class="label">Overall Signal</div>
+          <div class="signal-badge ${sigCls}">${overall.signal}</div>
+          <div class="score-bar"><div class="score-fill" style="width:${barPct}%;background:${barColor}"></div></div>
+          <div class="score-label">Score ${overall.score > 0 ? '+' : ''}${overall.score} · Confidence ${overall.confidence}%</div>
+          <div class="summary">${overall.summary}</div>
+        </div>
+      `;
+
+      // LLM prediction card
+      html += renderLLMCard();
+
+      for (const ind of indicators) {
+        html += renderIndCard(ind);
+      }
+      panel.innerHTML = html;
+
+      // bind toggles
+      panel.querySelectorAll('.toggle input').forEach(inp => {
+        inp.addEventListener('change', () => {
+          toggleOverlay(inp.dataset.ind, inp.checked);
+        });
+      });
+    }
+
+    /* ── CNN Fear & Greed — sub-chart ── */
+    function toggleFG(on) {
+      const slot = $('sub-fg');
+      if (!on) {
+        slot.style.display = 'none'; slot.innerHTML = '';
+        if (subCharts.fg) { subCharts.fg.remove(); delete subCharts.fg; }
+        delete subSeries.fg_line;
+        allCharts = allCharts.filter(c => c !== subCharts.fg);
+        syncTimeScales();
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'CNN Fear & Greed');
+      if (!ind || !ind.series || !ind.series.dates.length) return;
+      slot.style.display = 'block';
+
+      const opts = chartThemeOpts(130);
+      subCharts.fg = LightweightCharts.createChart(slot, { ...opts, width: $('chart').clientWidth });
+      allCharts.push(subCharts.fg);
+
+      const dates = ind.series.dates;
+      const scores = ind.series.scores;
+
+      const data = dates.map((d, i) => {
+        const v = scores[i];
+        let color = '#ffab40';
+        if (v <= 25) color = '#ef5350';
+        else if (v <= 45) color = '#ff7043';
+        else if (v >= 75) color = '#26a69a';
+        else if (v >= 55) color = '#66bb6a';
+        return { time: d, value: v, color };
+      });
+
+      subSeries.fg_line = subCharts.fg.addHistogramSeries({
+        priceFormat: { type: 'price', precision: 1, minMove: 0.1 },
+        priceLineVisible: false, lastValueVisible: false,
+      });
+      subSeries.fg_line.setData(data);
+
+      const mk = (val, col) => {
+        const s = subCharts.fg.addLineSeries({ color: col, lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+        s.setData(dates.map(d => ({ time: d, value: val })));
+      };
+      mk(20, '#ef535066');
+      mk(50, '#8b8fa344');
+      mk(80, '#26a69a66');
+
+      subCharts.fg.priceScale().applyOptions({ scaleMargins: { top: 0.05, bottom: 0.05 } });
+      subCharts.fg.timeScale().fitContent();
+      syncTimeScales();
+    }
+
+    /* ── Generic oscillator sub-chart ── */
+    function toggleOscillator(on, chartKey, slotId, lineConfigs, opts = {}) {
+      const slot = $(slotId);
+      if (!on) {
+        slot.style.display = 'none'; slot.innerHTML = '';
+        if (subCharts[chartKey]) { subCharts[chartKey].remove(); delete subCharts[chartKey]; }
+        lineConfigs.forEach(l => delete subSeries[`${chartKey}_${l.key}`]);
+        allCharts = allCharts.filter(c => c !== subCharts[chartKey]);
+        syncTimeScales();
+        return;
+      }
+      const ind = currentIndicators.find(i => i.series && lineConfigs.some(l => i.series[l.key]));
+      if (!ind) return;
+      slot.style.display = 'block';
+
+      const chartOpts = chartThemeOpts(opts.h || 130);
+      subCharts[chartKey] = LightweightCharts.createChart(slot, { ...chartOpts, width: $('chart').clientWidth });
+      allCharts.push(subCharts[chartKey]);
+
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+      const mapData = (arr) => candleDates.map((d, i) => {
+        const v = arr[offset + i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+
+      for (const lc of lineConfigs) {
+        const arr = ind.series[lc.key];
+        if (!arr) continue;
+        subSeries[`${chartKey}_${lc.key}`] = subCharts[chartKey].addLineSeries({
+          color: lc.color, lineWidth: lc.width || 1,
+          lineStyle: lc.style || 0,
+          priceLineVisible: false, lastValueVisible: false,
+        });
+        subSeries[`${chartKey}_${lc.key}`].setData(mapData(arr));
+      }
+
+      // horizontal reference lines
+      if (opts.hlines) {
+        for (const hl of opts.hlines) {
+          const s = subCharts[chartKey].addLineSeries({ color: hl.c, lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+          s.setData(candleDates.map(d => ({ time: d, value: hl.v })));
+        }
+      }
+
+      subCharts[chartKey].priceScale().applyOptions({ scaleMargins: { top: 0.05, bottom: 0.05 } });
+      subCharts[chartKey].timeScale().fitContent();
+      syncTimeScales();
+    }
+
+    /* ── VWAP — overlay on main chart ── */
+    function toggleVWAP(on) {
+      const keys = ['vwap_line'];
+      if (!on) {
+        keys.forEach(k => { if (overlaySeries[k]) { candleChart.removeSeries(overlaySeries[k]); delete overlaySeries[k]; } });
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'VWAP');
+      if (!ind || !ind.series) return;
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+
+      overlaySeries.vwap_line = candleChart.addLineSeries({ color: '#ff9800', lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
+      const data = candleDates.map((d, i) => {
+        const v = ind.series.vwap[offset + i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+      overlaySeries.vwap_line.setData(data);
+    }
+
+    /* ── Parabolic SAR — overlay on main chart ── */
+    function toggleSAR(on) {
+      if (!on) {
+        if (overlaySeries.sar) { candleChart.removeSeries(overlaySeries.sar); delete overlaySeries.sar; }
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'Parabolic SAR');
+      if (!ind || !ind.series) return;
+      const dates = ind.series.dates;
+      const candleDates = currentCandles.map(c => c.date);
+      const offset = dates.length - candleDates.length;
+
+      overlaySeries.sar = candleChart.addLineSeries({
+        color: '#e040fb', lineWidth: 1,
+        priceLineVisible: false, lastValueVisible: false,
+      });
+      const data = candleDates.map((d, i) => {
+        const v = ind.series.sar[offset + i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+      overlaySeries.sar.setData(data);
+    }
+
+    /* ── Fibonacci — overlay horizontal lines on main chart ── */
+    function toggleFib(on) {
+      const fibKeys = ['fib_0','fib_236','fib_382','fib_50','fib_618','fib_786','fib_100'];
+      if (!on) {
+        fibKeys.forEach(k => { if (overlaySeries[k]) { candleChart.removeSeries(overlaySeries[k]); delete overlaySeries[k]; } });
+        return;
+      }
+      const ind = currentIndicators.find(i => i.name === 'Fibonacci');
+      if (!ind || !ind.fib_levels) return;
+      const candleDates = currentCandles.map(c => c.date);
+      const fibs = ind.fib_levels;
+      const colors = {
+        '0.0': '#ef5350', '0.236': '#ff7043', '0.382': '#ffab40',
+        '0.5': '#8b8fa3', '0.618': '#66bb6a', '0.786': '#26a69a', '1.0': '#4a9eff',
+      };
+      const seriesKeys = ['fib_0','fib_236','fib_382','fib_50','fib_618','fib_786','fib_100'];
+      const fibKeys2 = ['0.0','0.236','0.382','0.5','0.618','0.786','1.0'];
+
+      for (let i = 0; i < fibKeys2.length; i++) {
+        const fk = fibKeys2[i];
+        const v = fibs[fk];
+        if (v == null) continue;
+        overlaySeries[seriesKeys[i]] = candleChart.addLineSeries({
+          color: colors[fk] || '#8b8fa3', lineWidth: 1, lineStyle: 2,
+          priceLineVisible: false, lastValueVisible: false,
+        });
+        overlaySeries[seriesKeys[i]].setData(candleDates.map(d => ({ time: d, value: v })));
+      }
+    }
+
+    const OVERLAYABLE = new Set([
+      'Bollinger Bands', 'Ichimoku', 'MACD', 'RSI', 'TD Sequential', 'CNN Fear & Greed',
+      'VWAP', 'Parabolic SAR', 'Fibonacci',
+      'Stochastic', 'ADX', 'CCI', 'Williams %R', 'MFI', 'OBV', 'ATR',
+    ]);
+
+    function renderIndCard(ind) {
+      // CNN Fear & Greed — special card with gauge + sub-indicators
+      if (ind.name === 'CNN Fear & Greed') return renderFGCard(ind);
+
+      const cls = signalClass(ind.signal);
+      const levels = ind.levels || {};
+      const vals = ind.values || {};
+      const reason = ind.reason || '';
+      const canOverlay = OVERLAYABLE.has(ind.name);
+
+      const skipKeys = new Set(['upper','middle','lower','macd','signal','histogram','rsi',
+        'tenkan','kijun','senkou_a','senkou_b','buy_counts','sell_counts',
+        'k','d','adx','plus_di','minus_di','vwap','atr','obv','obv_sma',
+        'cci','wr','mfi','sar']);
+      const valChips = Object.entries(vals)
+        .filter(([k]) => !skipKeys.has(k))
+        .map(([k, v]) => {
+          const display = typeof v === 'boolean' ? (v ? 'Yes' : 'No')
+            : typeof v === 'number' ? fmtNum(v) : String(v);
+          return `<span class="val-chip">${fmtKey(k)}: <span class="vk">${display}</span></span>`;
+        }).join('');
+
+      const strengthColor = ind.signal === 'BUY' ? 'var(--green)' : ind.signal === 'SELL' ? 'var(--red)' : 'var(--yellow)';
+
+      const toggleHTML = canOverlay ? `
+        <div class="toggle-wrap">
+          <span class="toggle-label">Overlay</span>
+          <label class="toggle">
+            <input type="checkbox" data-ind="${ind.name}" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      ` : '';
+
+      return `
+        <div class="ind-card">
+          <div class="ind-header">
+            <div class="ind-header-left">
+              <div>
+                <span class="ind-name">${ind.name}</span>
+                <span class="ind-params">${ind.params || ''}</span>
+              </div>
+              ${toggleHTML}
+            </div>
+            <span class="ind-signal ${cls}">${ind.signal}</span>
+          </div>
+          ${reason ? `<div class="ind-reason">${reason}</div>` : ''}
+          <div class="ind-levels">
+            <div class="level-item">
+              <div class="level-label">Support</div>
+              <div class="level-value" style="color:var(--green)">${levels.support != null ? fmtPrice(levels.support) : '—'}</div>
+            </div>
+            <div class="level-item">
+              <div class="level-label">Resistance</div>
+              <div class="level-value" style="color:var(--red)">${levels.resistance != null ? fmtPrice(levels.resistance) : '—'}</div>
+            </div>
+          </div>
+          ${valChips ? `<div class="ind-values">${valChips}</div>` : ''}
+          <div class="strength-bar"><div class="strength-fill" style="width:${ind.strength || 0}%;background:${strengthColor}"></div></div>
+        </div>
+      `;
+    }
+
+    function renderFGCard(ind) {
+      const cls = signalClass(ind.signal);
+      const vals = ind.values || {};
+      const subs = ind.sub_indicators || [];
+      const score = vals.score || 0;
+
+      const ratingColor = score <= 25 ? 'var(--red)' : score <= 45 ? '#ff7043'
+        : score >= 75 ? 'var(--green)' : score >= 55 ? '#66bb6a' : 'var(--yellow)';
+
+      // sub-indicators grid
+      let subsHTML = '';
+      if (subs.length) {
+        subsHTML = '<div class="fg-subs">' + subs.map(s => {
+          const sc = s.score;
+          const c = sc <= 25 ? 'var(--red)' : sc <= 45 ? '#ff7043'
+            : sc >= 75 ? 'var(--green)' : sc >= 55 ? '#66bb6a' : 'var(--yellow)';
+          return `<div class="fg-sub-item">
+            <span class="fg-sub-name">${s.name}</span>
+            <span class="fg-sub-score" style="color:${c}">${Math.round(s.score)}</span>
+          </div>`;
+        }).join('') + '</div>';
+      }
+
+      // trend/prev chips
+      const chipData = [];
+      if (vals.trend) chipData.push(`Trend: <span class="vk">${vals.trend}</span>`);
+      if (vals.previous_1_week) chipData.push(`1W ago: <span class="vk">${vals.previous_1_week}</span>`);
+      if (vals.previous_1_month) chipData.push(`1M ago: <span class="vk">${vals.previous_1_month}</span>`);
+      const chipsHTML = chipData.length ? `<div class="ind-values">${chipData.map(c => `<span class="val-chip">${c}</span>`).join('')}</div>` : '';
+
+      return `
+        <div class="ind-card">
+          <div class="ind-header">
+            <div class="ind-header-left">
+              <div>
+                <span class="ind-name">CNN Fear & Greed</span>
+                <span class="ind-params">Market-wide</span>
+              </div>
+              <div class="toggle-wrap">
+                <span class="toggle-label">Overlay</span>
+                <label class="toggle">
+                  <input type="checkbox" data-ind="CNN Fear & Greed" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+            <span class="ind-signal ${cls}">${ind.signal}</span>
+          </div>
+
+          <div class="fg-gauge">
+            <div class="fg-score-big" style="color:${ratingColor}">${Math.round(score)}</div>
+            <div class="fg-rating">${vals.rating || '—'}</div>
+            <div class="fg-gauge-bar">
+              <div class="fg-gauge-marker" style="left:${score}%"></div>
+            </div>
+            <div class="fg-gauge-labels">
+              <span>Extreme Fear</span><span>Fear</span><span>Neutral</span><span>Greed</span><span>Extreme Greed</span>
+            </div>
+          </div>
+
+          ${chipsHTML}
+          ${subsHTML}
+
+          <div class="strength-bar"><div class="strength-fill" style="width:${ind.strength || 0}%;background:${ratingColor}"></div></div>
+        </div>
+      `;
+    }
+
+    /* ================================================================
+       LLM Settings Modal
+       ================================================================ */
+    const settingsModal = $('settings-modal');
+
+    $('settings-btn').addEventListener('click', async () => {
+      await loadLLMConfig();
+      settingsModal.classList.add('open');
+    });
+    settingsModal.addEventListener('click', e => {
+      if (e.target === settingsModal) settingsModal.classList.remove('open');
+    });
+    $('cfg-cancel').addEventListener('click', () => settingsModal.classList.remove('open'));
+    $('cfg-save').addEventListener('click', saveLLMConfig);
+
+    async function loadLLMConfig() {
+      try {
+        const [cfgRes, presetsRes] = await Promise.all([
+          fetch('/api/llm/config'),
+          fetch('/api/llm/models'),
+        ]);
+        const cfg = await cfgRes.json();
+        const presets = await presetsRes.json();
+
+        // populate presets dropdown
+        const presetSelect = $('cfg-preset');
+        presetSelect.innerHTML = '<option value="">— Custom —</option>';
+        for (const [name, p] of Object.entries(presets)) {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          opt.dataset.url = p.base_url;
+          opt.dataset.model = p.model;
+          presetSelect.appendChild(opt);
+        }
+
+        // auto-select matching preset
+        let matched = false;
+        for (const opt of presetSelect.options) {
+          if (opt.dataset.model === cfg.model && opt.dataset.url === cfg.base_url) {
+            opt.selected = true;
+            matched = true;
+          }
+        }
+        if (!matched && presetSelect.options.length > 0) {
+          presetSelect.options[0].selected = true;
+        }
+
+        $('cfg-base-url').value = cfg.base_url || '';
+        $('cfg-api-key').value = '';
+        $('cfg-api-key').placeholder = cfg.api_key_masked || 'sk-...';
+        $('cfg-model').value = cfg.model || '';
+        $('cfg-temperature').value = cfg.temperature ?? 0.3;
+        $('cfg-max-tokens').value = cfg.max_tokens ?? 2000;
+        $('cfg-enabled').checked = !!cfg.enabled;
+      } catch (e) { console.error('Failed to load LLM config:', e); }
+    }
+
+    // preset change → auto-fill base_url and model
+    document.addEventListener('change', e => {
+      if (e.target.id === 'cfg-preset') {
+        const opt = e.target.selectedOptions[0];
+        if (opt?.dataset?.url) {
+          $('cfg-base-url').value = opt.dataset.url;
+          $('cfg-model').value = opt.dataset.model || '';
+        }
+      }
+    });
+
+    async function saveLLMConfig() {
+      const body = {};
+      const url = $('cfg-base-url').value.trim();
+      const key = $('cfg-api-key').value.trim();
+      const model = $('cfg-model').value.trim();
+      const temp = parseFloat($('cfg-temperature').value);
+      const maxTok = parseInt($('cfg-max-tokens').value);
+      const enabled = $('cfg-enabled').checked;
+
+      if (url) body.base_url = url;
+      if (key) body.api_key = key;
+      if (model) body.model = model;
+      if (!isNaN(temp)) body.temperature = temp;
+      if (!isNaN(maxTok)) body.max_tokens = maxTok;
+      body.enabled = enabled;
+
+      try {
+        await fetch('/api/llm/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        settingsModal.classList.remove('open');
+      } catch (e) { console.error('Failed to save LLM config:', e); }
+    }
+
+    /* ================================================================
+       LLM Prediction
+       ================================================================ */
+    let llmPrediction = null;
+    let llmLoading = false;
+
+    $('predict-btn').addEventListener('click', runPrediction);
+
+    async function runPrediction() {
+      if (llmLoading) return;
+      if (!currentTicker) return;
+
+      llmLoading = true;
+      llmPrediction = null;
+      $('predict-btn').disabled = true;
+      $('predict-btn').innerHTML = '<span class="btn-spinner"></span>Predicting...';
+      renderIndicators(currentIndicators, currentOverall);
+
+      try {
+        // try SSE streaming first
+        const evtSource = new EventSource(`/api/llm/predict/${encodeURIComponent(currentTicker)}/stream`);
+        let done = false;
+
+        evtSource.onmessage = (e) => {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'progress') {
+            // update loading message
+            const loadEl = document.querySelector('.llm-loading div:last-child');
+            if (loadEl) loadEl.textContent = msg.message;
+          } else if (msg.type === 'result') {
+            llmPrediction = msg.data;
+            done = true;
+          } else if (msg.type === 'error') {
+            llmPrediction = { error: msg.message };
+            done = true;
+          } else if (msg.type === 'done') {
+            evtSource.close();
+            llmLoading = false;
+            $('predict-btn').disabled = false;
+            $('predict-btn').textContent = '🔮 Predict';
+            renderIndicators(currentIndicators, currentOverall);
+          }
+        };
+
+        evtSource.onerror = () => {
+          evtSource.close();
+          if (!done) {
+            llmPrediction = { error: 'Connection lost. Retrying with non-streaming...' };
+            // fallback to non-streaming
+            fallbackPredict();
+          }
+        };
+      } catch (e) {
+        llmPrediction = { error: e.message };
+        llmLoading = false;
+        $('predict-btn').disabled = false;
+        $('predict-btn').textContent = '🔮 Predict';
+        renderIndicators(currentIndicators, currentOverall);
+      }
+    }
+
+    async function fallbackPredict() {
+      try {
+        const res = await fetch(`/api/llm/predict/${encodeURIComponent(currentTicker)}`);
+        llmPrediction = await res.json();
+      } catch (e) {
+        llmPrediction = { error: e.message };
+      } finally {
+        llmLoading = false;
+        $('predict-btn').disabled = false;
+        $('predict-btn').textContent = '🔮 Predict';
+        renderIndicators(currentIndicators, currentOverall);
+      }
+    }
+
+    function renderLLMCard() {
+      if (llmLoading) {
+        return `<div class="llm-card">
+          <div class="llm-header">
+            <span class="llm-title">🔮 LLM Prediction</span>
+          </div>
+          <div class="llm-loading"><div class="spinner"></div><div>Analyzing with LLM...</div></div>
+        </div>`;
+      }
+
+      if (!llmPrediction) {
+        return `<div class="llm-card">
+          <div class="llm-header">
+            <span class="llm-title">🔮 LLM Prediction</span>
+          </div>
+          <div class="llm-pending">Click <strong>Predict</strong> to run LLM analysis</div>
+        </div>`;
+      }
+
+      if (llmPrediction.error) {
+        return `<div class="llm-card">
+          <div class="llm-header">
+            <span class="llm-title">🔮 LLM Prediction</span>
+          </div>
+          <div class="llm-error">${escHtml(llmPrediction.error)}</div>
+        </div>`;
+      }
+
+      const p = llmPrediction;
+      const action = p.action || 'HOLD';
+      const actionColor = action === 'BUY' ? 'var(--green)' : action === 'SELL' ? 'var(--red)' : 'var(--yellow)';
+      const actionBg = action === 'BUY' ? 'rgba(38,166,154,0.1)' : action === 'SELL' ? 'rgba(239,83,80,0.1)' : 'rgba(255,171,64,0.1)';
+
+      const prices = [];
+      if (p.buy_price) prices.push({ label: 'Buy Limit', val: p.buy_price, color: 'var(--green)' });
+      if (p.sell_price) prices.push({ label: 'Sell Limit', val: p.sell_price, color: 'var(--red)' });
+      if (p.stop_loss) prices.push({ label: 'Stop Loss', val: p.stop_loss, color: 'var(--red)' });
+      if (p.take_profit) prices.push({ label: 'Take Profit', val: p.take_profit, color: 'var(--green)' });
+
+      const pricesHTML = prices.length ? `<div class="llm-prices">${prices.map(pr => `
+        <div class="llm-price-item">
+          <div class="llm-price-label">${pr.label}</div>
+          <div class="llm-price-val" style="color:${pr.color}">${fmtPrice(pr.val)}</div>
+        </div>
+      `).join('')}</div>` : '';
+
+      const conf = p.confidence || 0;
+      const confColor = conf >= 70 ? 'var(--green)' : conf >= 40 ? 'var(--yellow)' : 'var(--red)';
+
+      const factors = (p.key_factors || []).map(f => `<span class="llm-factor">${escHtml(f)}</span>`).join('');
+      const factorsHTML = factors ? `<div class="llm-factors">${factors}</div>` : '';
+
+      const rrHTML = p.risk_reward ? `<div class="llm-rr">Risk/Reward: <strong>${escHtml(p.risk_reward)}</strong></div>` : '';
+
+      return `
+        <div class="llm-card">
+          <div class="llm-header">
+            <span class="llm-title">🔮 LLM Prediction</span>
+            <span class="llm-model">${escHtml(p.model || '')}</span>
+          </div>
+          <div class="llm-action" style="color:${actionColor};background:${actionBg}">${action}</div>
+          ${pricesHTML}
+          <div class="llm-confidence"><div class="llm-confidence-fill" style="width:${conf}%;background:${confColor}"></div></div>
+          <div class="llm-confidence-label">Confidence: ${conf}%</div>
+          ${p.reasoning ? `<div class="llm-reasoning">${escHtml(p.reasoning)}</div>` : ''}
+          ${factorsHTML}
+          ${rrHTML}
+          <div class="chat-wrap">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-row">
+              <input id="chat-input" type="text" placeholder="Ask about ${escHtml(currentTicker)}..." />
+              <button id="chat-send-btn">Send</button>
+            </div>
+          </div>
+          <div class="pred-history" id="pred-history"></div>
+        </div>
+      `;
+    }
+
+    function escHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ================================================================
+       Chat & Prediction History
+       ================================================================ */
+    // delegated event handlers for dynamically created chat elements
+    document.addEventListener('click', e => {
+      if (e.target.id === 'chat-send-btn') sendChat();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.target.id === 'chat-input' && e.key === 'Enter') sendChat();
+    });
+
+    async function sendChat() {
+      const input = $('chat-input');
+      if (!input) return;
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+
+      const messagesEl = $('chat-messages');
+      if (messagesEl) {
+        messagesEl.innerHTML += `<div class="chat-msg user">${escHtml(msg)}</div>`;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      try {
+        const res = await fetch(`/api/llm/chat/${encodeURIComponent(currentTicker)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: msg,
+            context: {
+              current_price: currentCandles?.[currentCandles.length - 1]?.close,
+              last_prediction: llmPrediction,
+            },
+          }),
+        });
+        const data = await res.json();
+        if (messagesEl) {
+          if (data.reply) {
+            messagesEl.innerHTML += `<div class="chat-msg assistant">${escHtml(data.reply)}</div>`;
+          } else if (data.error) {
+            messagesEl.innerHTML += `<div class="chat-msg assistant" style="color:var(--red)">${escHtml(data.error)}</div>`;
+          }
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+      } catch (err) {
+        if (messagesEl) {
+          messagesEl.innerHTML += `<div class="chat-msg assistant" style="color:var(--red)">Failed to send.</div>`;
+        }
+      }
+    }
+
+    async function loadChatHistory() {
+      if (!currentTicker) return;
+      try {
+        const res = await fetch(`/api/llm/chat/${encodeURIComponent(currentTicker)}/history?limit=10`);
+        const history = await res.json();
+        const messagesEl = $('chat-messages');
+        if (messagesEl && history.length) {
+          messagesEl.innerHTML = history.map(m =>
+            `<div class="chat-msg ${m.role}">${escHtml(m.content)}<span class="chat-time">${m.created_at?.slice(11,16) || ''}</span></div>`
+          ).join('');
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+      } catch (e) {}
+    }
+
+    async function loadPredictionHistory() {
+      if (!currentTicker) return;
+      try {
+        const res = await fetch(`/api/llm/history/${encodeURIComponent(currentTicker)}?limit=5`);
+        const history = await res.json();
+        const el = $('pred-history');
+        if (el && history.length) {
+          el.innerHTML = '<h4>📜 Past Predictions</h4>' + history.map(h => {
+            const ac = h.action === 'BUY' ? 'var(--green)' : h.action === 'SELL' ? 'var(--red)' : 'var(--yellow)';
+            return `<div class="pred-entry">
+              <span class="pred-action" style="color:${ac}">${h.action || '?'}</span>
+              <span style="flex:1;font-size:11px;color:var(--text-dim)">${escHtml((h.reasoning || '').slice(0, 60))}...</span>
+              <span class="pred-date">${h.created_at?.slice(0, 10) || ''}</span>
+            </div>`;
+          }).join('');
+        }
+      } catch (e) {}
+    }
+
+    // load chat and prediction history when LLM card is rendered
+    const origRenderIndicators = renderIndicators;
+    renderIndicators = function(indicators, overall) {
+      origRenderIndicators(indicators, overall);
+      if (currentTicker) {
+        setTimeout(() => {
+          loadChatHistory();
+          loadPredictionHistory();
+        }, 100);
+      }
+    };
+
+    /* ================================================================
+       WebSocket Real-time Price
+       ================================================================ */
+    function connectWebSocket(ticker) {
+      if (wsConnection) {
+        wsConnection.close();
+        wsConnection = null;
+      }
+      if (!ticker) return;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/stock/${ticker}`;
+
+      try {
+        wsConnection = new WebSocket(wsUrl);
+        wsConnection.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'price') {
+              updateRealtimePrice(data);
+            }
+          } catch (e) {}
+        };
+        wsConnection.onclose = () => {
+          setTimeout(() => {
+            if (currentTicker === ticker) connectWebSocket(ticker);
+          }, 5000);
+        };
+        const pingInterval = setInterval(() => {
+          if (wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+            wsConnection.send('ping');
+          } else {
+            clearInterval(pingInterval);
+          }
+        }, 25000);
+      } catch (e) {
+        console.error('WebSocket connection failed:', e);
+      }
+    }
+
+    function updateRealtimePrice(data) {
+      const badge = document.getElementById('rt-price-badge');
+      if (badge) {
+        const change = data.change_pct || 0;
+        const color = change >= 0 ? 'var(--green)' : 'var(--red)';
+        const arrow = change >= 0 ? '▲' : '▼';
+        badge.innerHTML = `<span style="color:${color};font-weight:700;font-size:20px">${fmtPrice(data.price)}</span> <span style="color:${color}">${arrow}${Math.abs(change).toFixed(2)}%</span>`;
+        badge.style.display = 'block';
+      }
+    }
+
+    /* ================================================================
+       Standalone Pages (Factor Lab, Backtest)
+       ================================================================ */
+    function showFactorLabPage() {
+      $('welcome').style.display = 'none';
+      $('dashboard').style.display = 'none';
+      $('stock-info').style.display = 'none';
+      $('content-wrap').style.display = 'none';
+      $('loading').style.display = 'none';
+      // show factor section standalone
+      const section = $('factor-section');
+      if (section) {
+        section.style.display = 'block';
+        // move it to main if not already there
+        const main = document.querySelector('main');
+        if (section.parentElement !== main) {
+          main.appendChild(section);
+        }
+        section.style.maxWidth = '1000px';
+        section.style.margin = '20px auto';
+      }
+    }
+
+    function showBacktestPage() {
+      $('welcome').style.display = 'none';
+      $('dashboard').style.display = 'none';
+      $('stock-info').style.display = 'none';
+      $('content-wrap').style.display = 'none';
+      $('loading').style.display = 'none';
+      // show backtest section standalone
+      const section = $('factor-section');
+      if (section) {
+        section.style.display = 'block';
+        const main = document.querySelector('main');
+        if (section.parentElement !== main) {
+          main.appendChild(section);
+        }
+        section.style.maxWidth = '1000px';
+        section.style.margin = '20px auto';
+      }
+    }
+
+    // navigation links
+    document.addEventListener('click', e => {
+      if (e.target.matches('[data-nav]')) {
+        e.preventDefault();
+        const target = e.target.getAttribute('data-nav');
+        if (target === 'factors') {
+          window.location.hash = '#factors';
+          showFactorLabPage();
+        } else if (target === 'backtest') {
+          window.location.hash = '#backtest';
+          showBacktestPage();
+        } else if (target === 'dashboard') {
+          window.location.hash = '';
+          window.location.href = '/';
+        }
+      }
+    });
+
+    /* ================================================================
+       Stock Comparison
+       ================================================================ */
+    document.addEventListener('click', e => {
+      if (e.target.id === 'compare-btn') runCompare();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.target.id === 'compare-input' && e.key === 'Enter') runCompare();
+    });
+
+    async function runCompare() {
+      const input = $('compare-input');
+      const result = $('compare-result');
+      if (!input || !result) return;
+      const tickers = input.value.trim();
+      if (!tickers) return;
+      result.innerHTML = '<div style="color:var(--text-dim);font-size:13px">Loading...</div>';
+
+      try {
+        const res = await fetch(`/api/compare?tickers=${encodeURIComponent(tickers)}`);
+        const data = await res.json();
+        if (data.detail) { result.innerHTML = `<div style="color:var(--red);font-size:13px">${escHtml(data.detail)}</div>`; return; }
+
+        const stocks = data.stocks || [];
+        if (!stocks.length) { result.innerHTML = '<div style="color:var(--text-dim);font-size:13px">No data found</div>'; return; }
+
+        let html = '<table class="strat-table"><thead><tr><th>Ticker</th><th>Name</th><th>Price</th><th>Change</th><th>Mkt Cap</th><th>52W High</th><th>52W Low</th><th>From High</th></tr></thead><tbody>';
+        for (const s of stocks) {
+          const cc = s.change_pct >= 0 ? 'var(--green)' : 'var(--red)';
+          const fc = s.from_52w_high < -20 ? 'var(--red)' : 'var(--text-dim)';
+          html += `<tr style="cursor:pointer" onclick="searchInput.value='${s.ticker}';loadStock('${s.ticker}')">
+            <td style="color:var(--accent);font-weight:600">${s.ticker}</td>
+            <td style="font-size:12px;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.name)}</td>
+            <td>${fmtPrice(s.price)}</td>
+            <td style="color:${cc}">${s.change_pct >= 0 ? '+' : ''}${s.change_pct}%</td>
+            <td>${s.market_cap ? fmtCap(s.market_cap) : '—'}</td>
+            <td>${fmtPrice(s.high_52w)}</td>
+            <td>${fmtPrice(s.low_52w)}</td>
+            <td style="color:${fc}">${s.from_52w_high}%</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+        result.innerHTML = html;
+      } catch (e) {
+        result.innerHTML = `<div style="color:var(--red);font-size:13px">Failed: ${e.message}</div>`;
+      }
+    }
+
+    /* ================================================================
+       Q&A, Bull/Bear, Report, Factor Lab
+       ================================================================ */
+    // Q&A
+    document.addEventListener('click', e => {
+      if (e.target.id === 'qa-btn') sendQA();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.target.id === 'qa-input' && e.key === 'Enter') sendQA();
+    });
+
+    async function sendQA() {
+      const input = $('qa-input');
+      const answer = $('qa-answer');
+      if (!input || !answer) return;
+      const q = input.value.trim();
+      if (!q) return;
+      answer.style.display = 'block';
+      answer.textContent = 'Thinking...';
+      try {
+        const res = await fetch('/api/llm/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q }),
+        });
+        const data = await res.json();
+        answer.textContent = data.answer || data.error || 'No answer.';
+      } catch (e) {
+        answer.textContent = 'Failed to get answer.';
+      }
+    }
+
+    // Factor Lab
+    document.addEventListener('click', e => {
+      if (e.target.id === 'factor-eval-btn') evalFactor();
+      if (e.target.classList.contains('factor-lib-item')) {
+        $('factor-input').value = e.target.dataset.expr;
+        evalFactor();
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.target.id === 'factor-input' && e.key === 'Enter') evalFactor();
+    });
+
+    async function evalFactor() {
+      const input = $('factor-input');
+      const result = $('factor-result');
+      if (!input || !result || !currentTicker) return;
+      const expr = input.value.trim();
+      if (!expr) return;
+      result.style.display = 'block';
+      result.innerHTML = '<div style="color:var(--text-dim)">Evaluating...</div>';
+      try {
+        const res = await fetch(`/api/factors/eval/${encodeURIComponent(currentTicker)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expression: expr }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          result.innerHTML = `<div style="color:var(--red)">${escHtml(data.error)}</div>`;
+          return;
+        }
+        const isSignal = data.type === 'signal';
+        const val = data.latest_value;
+        const sigCount = data.signal_count_30d || 0;
+        const valColor = isSignal ? (val ? 'var(--green)' : 'var(--red)') : 'var(--accent)';
+        const valDisplay = isSignal ? (val ? 'TRUE ✓' : 'FALSE ✗') : fmtNum(val);
+        result.innerHTML = `
+          <div style="font-size:11px;color:var(--text-dim);font-family:monospace">${escHtml(data.expression)}</div>
+          <div class="factor-val" style="color:${valColor}">${valDisplay}</div>
+          ${isSignal ? `<div style="font-size:12px;color:var(--text-dim)">Signals in last 30 days: <strong>${sigCount}</strong></div>` : ''}
+          <div id="factor-chart"></div>
+        `;
+        // render chart for numeric factor values
+        if (!isSignal && data.values && data.dates && data.values.length > 5) {
+          renderFactorChart(data.dates, data.values);
+        }
+      } catch (e) {
+        result.innerHTML = '<div style="color:var(--red)">Evaluation failed.</div>';
+      }
+    }
+
+    let factorChart = null;
+    function renderFactorChart(dates, values) {
+      const el = $('factor-chart');
+      if (!el) return;
+      el.style.display = 'block';
+      el.innerHTML = '';
+      if (factorChart) { factorChart.remove(); factorChart = null; }
+
+      const opts = chartThemeOpts(150);
+      factorChart = LightweightCharts.createChart(el, { ...opts, width: el.clientWidth });
+      const series = factorChart.addLineSeries({
+        color: '#4a9eff', lineWidth: 2,
+        priceLineVisible: false, lastValueVisible: true,
+      });
+      const data = dates.map((d, i) => {
+        const v = values[i];
+        return v != null ? { time: d, value: v } : null;
+      }).filter(Boolean);
+      series.setData(data);
+      factorChart.timeScale().fitContent();
+
+      new ResizeObserver(() => {
+        if (factorChart) factorChart.applyOptions({ width: el.clientWidth });
+      }).observe(el);
+    }
+
+    async function loadFactorLibrary() {
+      try {
+        const res = await fetch('/api/factors/library');
+        const factors = await res.json();
+        const lib = $('factor-lib');
+        if (lib) {
+          lib.innerHTML = factors.map(f =>
+            `<span class="factor-lib-item" data-expr="${escHtml(f.expression)}" title="${escHtml(f.description)}">${escHtml(f.name)}</span>`
+          ).join('');
+        }
+      } catch (e) {}
+    }
+
+    // load factor library on page load
+    loadFactorLibrary();
+
+    // Strategy comparison
+    document.addEventListener('click', e => {
+      if (e.target.id === 'bt-compare-btn') compareStrategies();
+      if (e.target.id === 'corr-btn') computeCorrelation();
+    });
+
+    async function compareStrategies() {
+      const el = $('bt-compare-result');
+      if (!el || !currentTicker) return;
+      el.innerHTML = '<div style="color:var(--text-dim);padding:6px">Running comparison...</div>';
+
+      const strategies = [
+        { name: "RSI (30/70)", buy: "rsi(14) < 30", sell: "rsi(14) > 70" },
+        { name: "RSI (20/80)", buy: "rsi(14) < 20", sell: "rsi(14) > 80" },
+        { name: "MACD Cross", buy: "macd_cross('bullish')", sell: "macd_cross('bearish')" },
+        { name: "BB Bounce", buy: "close < bb_lower(20, 2)", sell: "close > bb_upper(20, 2)" },
+        { name: "Stoch+RSI", buy: "stochastic_k(14) < 20 and rsi(14) < 30", sell: "stochastic_k(14) > 80 and rsi(14) > 70" },
+      ];
+
+      try {
+        const res = await fetch(`/api/backtest/${encodeURIComponent(currentTicker)}/compare`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ strategies }),
+        });
+        const data = await res.json();
+        if (data.detail) {
+          el.innerHTML = `<div style="color:var(--red);padding:6px">${escHtml(data.detail)}</div>`;
+          return;
+        }
+
+        const best = data.best;
+        let html = '<table class="strat-table"><thead><tr><th>Strategy</th><th>Return</th><th>Sharpe</th><th>Max DD</th><th>Win Rate</th><th>Trades</th></tr></thead><tbody>';
+        for (const s of data.strategies) {
+          if (s.error) {
+            html += `<tr><td>${escHtml(s.name)}</td><td colspan="5" style="color:var(--red)">${escHtml(s.error)}</td></tr>`;
+          } else {
+            const isBest = best && s.name === best.name;
+            const cls = isBest ? ' class="strat-best"' : '';
+            const rc = s.total_return >= 0 ? 'var(--green)' : 'var(--red)';
+            html += `<tr${cls}>
+              <td>${escHtml(s.name)}</td>
+              <td style="color:${rc}">${s.total_return}%</td>
+              <td>${s.sharpe_ratio}</td>
+              <td>${s.max_drawdown}%</td>
+              <td>${s.win_rate}%</td>
+              <td>${s.total_trades}</td>
+            </tr>`;
+          }
+        }
+        html += '</tbody></table>';
+        if (best) html += `<div style="font-size:11px;color:var(--green);margin-top:6px">🏆 Best: ${escHtml(best.name)} (Sharpe ${best.sharpe_ratio})</div>`;
+        el.innerHTML = html;
+      } catch (e) {
+        el.innerHTML = `<div style="color:var(--red);padding:6px">Failed: ${e.message}</div>`;
+      }
+    }
+
+    async function computeCorrelation() {
+      const el = $('corr-result');
+      if (!el || !currentTicker) return;
+      el.innerHTML = '<div style="color:var(--text-dim);padding:6px">Computing...</div>';
+
+      try {
+        const res = await fetch(`/api/factors/correlation/${encodeURIComponent(currentTicker)}`);
+        const data = await res.json();
+        if (data.error) {
+          el.innerHTML = `<div style="color:var(--red);padding:6px">${escHtml(data.error)}</div>`;
+          return;
+        }
+
+        const factors = data.factors.map(f => f.replace(/\(.*?\)/g, '').slice(0, 8));
+        const matrix = data.matrix;
+
+        let html = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">${data.n_samples} samples</div>`;
+        html += '<div class="corr-matrix">';
+        // header
+        html += '<div class="corr-row"><div class="corr-cell" style="background:var(--surface2)"></div>';
+        factors.forEach(f => { html += `<div class="corr-label">${escHtml(f)}</div>`; });
+        html += '</div>';
+        // rows
+        for (let i = 0; i < factors.length; i++) {
+          html += `<div class="corr-row"><div class="corr-label" style="width:auto;margin-right:4px;font-size:9px">${escHtml(factors[i])}</div>`;
+          for (let j = 0; j < factors.length; j++) {
+            const v = matrix[i][j];
+            const absV = Math.abs(v);
+            const hue = v >= 0 ? 120 : 0; // green for positive, red for negative
+            const alpha = absV * 0.6;
+            const bg = `hsla(${hue}, 60%, 40%, ${alpha})`;
+            html += `<div class="corr-cell" style="background:${bg}" title="${factors[i]} vs ${factors[j]}: ${v}">${absV > 0.3 ? v.toFixed(1) : ''}</div>`;
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      } catch (e) {
+        el.innerHTML = `<div style="color:var(--red);padding:6px">Failed: ${e.message}</div>`;
+      }
+    }
+
+    // Backtest
+    document.addEventListener('click', e => {
+      if (e.target.id === 'bt-run-btn') runBacktest();
+    });
+
+    let btChart = null;
+    function exportBacktestCSV() {
+      const data = window._lastBacktestData;
+      if (!data?.trades?.length) return;
+      let csv = 'Entry Date,Entry Price,Exit Date,Exit Price,Shares,PnL,PnL%,Reason\n';
+      for (const t of data.trades) {
+        csv += `${t.entry_date},${t.entry_price},${t.exit_date || ''},${t.exit_price},${t.shares},${t.pnl},${t.pnl_pct},${t.exit_reason}\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backtest_${currentTicker || 'result'}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function runBacktest() {
+      const buyExpr = $('bt-buy')?.value?.trim();
+      const sellExpr = $('bt-sell')?.value?.trim();
+      const resultEl = $('bt-result');
+      if (!buyExpr || !sellExpr || !currentTicker || !resultEl) return;
+
+      resultEl.innerHTML = '<div style="color:var(--text-dim);padding:8px">Running backtest...</div>';
+
+      try {
+        const res = await fetch(`/api/backtest/${encodeURIComponent(currentTicker)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buy_expr: buyExpr, sell_expr: sellExpr }),
+        });
+        const data = await res.json();
+        if (data.detail) {
+          resultEl.innerHTML = `<div style="color:var(--red);padding:8px">${escHtml(data.detail)}</div>`;
+          return;
+        }
+
+        const retColor = data.total_return >= 0 ? 'var(--green)' : 'var(--red)';
+        const ddColor = data.max_drawdown > 20 ? 'var(--red)' : 'var(--yellow)';
+
+        let html = `
+          <div class="bt-metrics">
+            <div class="bt-metric"><div class="bt-label">Return</div><div class="bt-val" style="color:${retColor}">${data.total_return}%</div></div>
+            <div class="bt-metric"><div class="bt-label">Annual</div><div class="bt-val" style="color:${retColor}">${data.annual_return}%</div></div>
+            <div class="bt-metric"><div class="bt-label">Max DD</div><div class="bt-val" style="color:${ddColor}">${data.max_drawdown}%</div></div>
+            <div class="bt-metric"><div class="bt-label">Sharpe</div><div class="bt-val">${data.sharpe_ratio}</div></div>
+            <div class="bt-metric"><div class="bt-label">Win Rate</div><div class="bt-val">${data.win_rate}%</div></div>
+            <div class="bt-metric"><div class="bt-label">Profit Factor</div><div class="bt-val">${data.profit_factor}</div></div>
+            <div class="bt-metric"><div class="bt-label">Trades</div><div class="bt-val">${data.total_trades}</div></div>
+            <div class="bt-metric"><div class="bt-label">Avg PnL</div><div class="bt-val" style="color:${data.avg_trade_pnl >= 0 ? 'var(--green)' : 'var(--red)'}">$${fmtNum(data.avg_trade_pnl)}</div></div>
+          </div>
+          <div id="bt-chart"></div>
+        `;
+
+        // trade log
+        if (data.trades?.length) {
+          html += '<div class="bt-trades"><table><thead><tr><th>Entry</th><th>Entry$</th><th>Exit</th><th>Exit$</th><th>Shares</th><th>PnL</th><th>PnL%</th><th>Reason</th></tr></thead><tbody>';
+          for (const t of data.trades) {
+            const c = t.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+            html += `<tr>
+              <td>${t.entry_date}</td><td>${fmtPrice(t.entry_price)}</td>
+              <td>${t.exit_date || ''}</td><td>${fmtPrice(t.exit_price)}</td>
+              <td>${t.shares}</td>
+              <td style="color:${c}">$${fmtNum(t.pnl)}</td>
+              <td style="color:${c}">${t.pnl_pct}%</td>
+              <td>${t.exit_reason}</td>
+            </tr>`;
+          }
+          html += '</tbody></table></div>';
+          html += `<div style="margin-top:8px"><button onclick="exportBacktestCSV()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer">📥 Export CSV</button></div>`;
+        }
+
+        resultEl.innerHTML = html;
+        window._lastBacktestData = data; // store for export
+
+        // render equity curve chart
+        if (data.equity_curve?.length) {
+          const el = $('bt-chart');
+          if (el) {
+            el.style.display = 'block';
+            if (btChart) { btChart.remove(); btChart = null; }
+            el.innerHTML = '';
+            const opts = chartThemeOpts(200);
+            btChart = LightweightCharts.createChart(el, { ...opts, width: el.clientWidth });
+            const series = btChart.addLineSeries({
+              color: '#4a9eff', lineWidth: 2,
+              priceLineVisible: false, lastValueVisible: true,
+            });
+            series.setData(data.equity_curve.map(e => ({ time: e.date, value: e.equity })));
+            btChart.timeScale().fitContent();
+            new ResizeObserver(() => { if (btChart) btChart.applyOptions({ width: el.clientWidth }); }).observe(el);
+          }
+        }
+      } catch (e) {
+        resultEl.innerHTML = `<div style="color:var(--red);padding:8px">Backtest failed: ${e.message}</div>`;
+      }
+    }
+
+    /* ================================================================
+       Helpers
+       ================================================================ */
+    function signalClass(s) {
+      if (s === 'BUY') return 'signal-buy';
+      if (s === 'SELL') return 'signal-sell';
+      if (s === 'WATCH') return 'signal-watch';
+      return 'signal-neutral';
+    }
+    function fmtNum(v) {
+      if (v == null) return '—';
+      if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(1)+'M';
+      if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(1)+'K';
+      if (Math.abs(v) < 0.01 && v !== 0) return v.toExponential(2);
+      return Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    // price formatting — always full precision (no K/M abbreviation)
+    function fmtPrice(v) {
+      if (v == null) return '—';
+      return '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // currency formatting by market
+    function fmtCurrency(v, currency) {
+      if (v == null) return '—';
+      const c = currency || 'USD';
+      try {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency: c, maximumFractionDigits: 2 }).format(v);
+      } catch { return fmtPrice(v); }
+    }
+
+    // timezone-aware date formatting
+    function fmtDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, {
+          year: 'numeric', month: 'short', day: 'numeric',
+        });
+      } catch { return dateStr; }
+    }
+
+    function fmtDateTime(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        return new Date(dateStr).toLocaleString(undefined, {
+          year: 'numeric', month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+      } catch { return dateStr; }
+    }
+    function fmtKey(k) {
+      return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+  </script>
+</body>
+</html>

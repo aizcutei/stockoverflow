@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  stockoverflow:
+    build: .
+    container_name: stockoverflow
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data        # persist SQLite database
+      - ./.env:/app/.env:ro     # mount env file (read-only)
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
