@@ -461,6 +461,34 @@ class BullBearDebateBody(BaseModel):
     current_price: float | None = None
 
 
+class OptimizeBody(BaseModel):
+    risk_tolerance: str = "moderate"
+
+
+@app.post("/api/llm/optimize")
+async def api_optimize(body: OptimizeBody, db: Session = Depends(get_db)):
+    """Portfolio optimization based on risk tolerance."""
+    from backend.llm_service import optimize_portfolio
+    from backend.paper_trading import get_account_summary
+
+    account = get_account_summary(db)
+    positions = account.get("positions", [])
+    if not positions:
+        return {"error": "No positions to optimize"}
+    return optimize_portfolio(positions, body.risk_tolerance)
+
+
+class FinancialAnalysisBody(BaseModel):
+    financials: dict
+
+
+@app.post("/api/llm/financial-analysis/{ticker}")
+async def api_financial_analysis(ticker: str, body: FinancialAnalysisBody):
+    """LLM analysis of financial data."""
+    from backend.llm_service import analyze_financial_report
+    return analyze_financial_report(ticker.upper(), body.financials)
+
+
 @app.get("/api/llm/portfolio-review")
 async def api_portfolio_review(db: Session = Depends(get_db)):
     """Generate daily portfolio review for all held stocks."""

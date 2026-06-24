@@ -402,6 +402,101 @@ Respond in JSON:
         return {"error": str(e)}
 
 
+def optimize_portfolio(positions: list[dict], risk_tolerance: str = "moderate") -> dict:
+    """Suggest portfolio rebalancing based on risk tolerance."""
+    config = get_config()
+    if not config.get("enabled") or not config.get("api_key"):
+        return {"error": "LLM is not configured."}
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
+
+    pos_text = "\n".join(
+        f"- {p['ticker']}: {p['quantity']} shares @ ${p['avg_cost']}, value ${p.get('market_value', '?')}, {p.get('sector', 'unknown')} sector"
+        for p in positions
+    )
+
+    prompt = f"""Optimize this portfolio for a {risk_tolerance} risk tolerance investor.
+
+Current holdings:
+{pos_text}
+
+Respond in JSON:
+{{
+  "current_allocation": {{"<sector>": <percentage>, ...}},
+  "recommended_allocation": {{"<sector>": <percentage>, ...}},
+  "rebalance_actions": [
+    {{"ticker": "<TICKER>", "action": "buy"|"sell"|"hold", "amount": "<dollar amount or shares>", "reason": "<brief reason>"}}
+  ],
+  "diversification_score": <0-100>,
+  "risk_notes": "<key risk observations>",
+  "one_tip": "<one actionable tip>"
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["model"],
+            temperature=0.3,
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+        if raw.startswith("json"):
+            raw = raw[4:].strip()
+        return json.loads(raw)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def analyze_financial_report(ticker: str, financials: dict) -> dict:
+    """LLM analysis of financial data — earnings, revenue trends."""
+    config = get_config()
+    if not config.get("enabled") or not config.get("api_key"):
+        return {"error": "LLM is not configured."}
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
+
+    fin_text = json.dumps(financials, indent=2, default=str)[:3000]
+
+    prompt = f"""Analyze these financials for {ticker} and give investment insights.
+
+Financial data:
+{fin_text}
+
+Respond in JSON:
+{{
+  "revenue_trend": "growing" | "declining" | "stable",
+  "profitability": "improving" | "deteriorating" | "stable",
+  "key_metrics": {{"metric": "value", ...}},
+  "strengths": ["strength1", "strength2"],
+  "weaknesses": ["weakness1", "weakness2"],
+  "investment_implication": "<1-2 sentences on what this means for investors>"
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["model"],
+            temperature=0.3,
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+        if raw.startswith("json"):
+            raw = raw[4:].strip()
+        return json.loads(raw)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def bull_bear_debate(ticker: str, indicators: list[dict], overall: dict, current_price: float = None) -> dict:
     """Generate structured bull vs bear debate with arguments on both sides."""
     config = get_config()
