@@ -137,9 +137,54 @@ def get_active_prompt() -> str:
     return SYSTEM_PROMPT
 
 
+def _get_market_session() -> str:
+    """Detect current market session based on US Eastern time."""
+    from datetime import timezone, timedelta
+    import pytz
+
+    try:
+        et = pytz.timezone("US/Eastern")
+    except Exception:
+        et = timezone(timedelta(hours=-4))
+
+    now = datetime.now(et)
+    hour = now.hour
+    minute = now.minute
+    weekday = now.weekday()  # 0=Mon, 6=Sun
+
+    if weekday >= 5:
+        return "closed_weekend"
+
+    t = hour * 60 + minute
+    if t < 240:  # before 4:00 AM
+        return "closed_overnight"
+    elif t < 570:  # 4:00 - 9:30 AM
+        return "pre_market"
+    elif t < 960:  # 9:30 AM - 4:00 PM
+        return "regular"
+    elif t < 1020:  # 4:00 - 5:00 PM
+        return "after_hours"
+    else:
+        return "closed_after_hours"
+
+
+def _get_session_context(session: str) -> str:
+    """Get context text based on market session."""
+    contexts = {
+        "pre_market": "PRE-MARKET SESSION (4:00-9:30 AM ET). Use pre-market data and overnight news. Focus on OPENING strategy.",
+        "regular": "MARKET IS OPEN (9:30 AM - 4:00 PM ET). Use real-time intraday data. Focus on INTRADAY trading decisions.",
+        "after_hours": "AFTER-HOURS SESSION (4:00-5:00 PM ET). Use today's closing data. Focus on NEXT-DAY limit orders.",
+        "closed_overnight": "MARKET CLOSED (overnight). Use today's closing data. Focus on NEXT-DAY limit orders.",
+        "closed_weekend": "MARKET CLOSED (weekend). Use last trading day's data. Focus on MONDAY opening strategy.",
+        "closed_after_hours": "MARKET CLOSED. Use today's closing data. Focus on NEXT-DAY limit orders.",
+    }
+    return contexts.get(session, "")
+
+
 def _build_user_prompt(
     ticker: str, info: dict, candles: list[dict],
     indicators: list[dict], overall: dict, news_text: str = "", financials_text: str = "",
+    session_context: str = "",
 ) -> str:
     """Build the analysis prompt from structured stock data."""
 
@@ -168,8 +213,10 @@ def _build_user_prompt(
     news_block = f"\n\n--- Recent News ---\n{news_text}" if news_text else ""
     fin_block = f"\n\n{financials_text}" if financials_text else ""
 
-    return f"""Analyze {ticker} ({info.get('name', ticker)}) for next-day limit order.
+    session_line = f"\n{session_context}\n" if session_context else ""
 
+    return f"""Analyze {ticker} ({info.get('name', ticker)}).
+{session_line}
 Current price: {candles[-1]['close']} (as of {candles[-1]['date']})
 Exchange: {info.get('exchange', 'N/A')}
 Sector: {info.get('sector', 'N/A')}
@@ -211,7 +258,11 @@ def predict(ticker: str, info: dict, candles: list[dict], indicators: list[dict]
     news_text = get_news_for_llm(ticker, limit=5)
     financials_text = get_financials_for_llm(ticker)
 
-    user_prompt = _build_user_prompt(ticker, info, candles, indicators, overall, news_text, financials_text)
+    # detect market session
+    session = _get_market_session()
+    session_context = _get_session_context(session)
+
+    user_prompt = _build_user_prompt(ticker, info, candles, indicators, overall, news_text, financials_text, session_context)
 
     try:
         response = client.chat.completions.create(

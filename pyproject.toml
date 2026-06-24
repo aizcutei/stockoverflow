@@ -15,6 +15,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "slowapi>=0.1.10",
     "scipy>=1.18.0",
+    "pytz>=2026.2",
 ]
 
 [project.scripts]
