@@ -141,6 +141,7 @@ app.add_middleware(
 # --- static / frontend ---
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(FRONTEND)), name="static")
+app.mount("/locales", StaticFiles(directory=str(FRONTEND / "locales")), name="locales")
 
 
 @app.get("/")

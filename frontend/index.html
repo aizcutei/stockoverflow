@@ -1056,128 +1056,21 @@
     /* ================================================================
        i18n — basic Chinese/English support
        ================================================================ */
-    const I18N = {
-      en: {
-        search_placeholder: 'Search by ticker or company name...',
-        predict_btn: '🔮 Predict',
-        share_btn: '🔗 Share',
-        watchlist_btn: '☆ Watchlist',
-        dashboard: 'Dashboard',
-        account: '💰 Account',
-        positions: '📊 Positions',
-        watchlist: '⭐ Watchlist',
-        recent_stocks: '🕐 Recent Stocks',
-        recent_preds: '🔮 Recent Predictions',
-        compare_stocks: '📊 Compare Stocks',
-        market_overview: '📊 Market Overview',
-        tomorrow_guide: "⭐ Watchlist — Tomorrow's Guide",
-        no_positions: 'No positions yet',
-        no_preds: 'No predictions yet',
-        no_watchlist: 'No stocks in watchlist. Click ☆ on any stock page to add.',
-        overall_signal: 'Overall Signal',
-        confidence: 'Confidence',
-        support: 'Support',
-        resistance: 'Resistance',
-        overlay: 'Overlay',
-        news: '📰 News',
-        financials: '📊 Financials',
-        risk: '⚠️ Risk Assessment',
-        factor_lab: '🧪 Factor Lab',
-        ask_anything: '💬 Ask Anything',
-        backtest: '📊 Backtest',
-        run_backtest: 'Run Backtest',
-        compare_btn: 'Compare RSI vs MACD vs BB',
-        llm_settings: '⚙️ LLM Settings',
-        base_url: 'Base URL',
-        api_key: 'API Key',
-        model_preset: 'Model Preset',
-        model: 'Model',
-        temperature: 'Temperature (0-1)',
-        max_tokens: 'Max Tokens',
-        enable_llm: 'Enable LLM Predictions',
-        cancel: 'Cancel',
-        save: 'Save',
-        loading: 'Fetching data from Yahoo Finance...',
-        search_stocks: 'Search for a US stock',
-        enter_ticker: 'Enter a ticker symbol or company name above',
-        factor_lab_nav: 'Factor Lab',
-        backtest_nav: 'Backtest',
-        dashboard_nav: 'Dashboard',
-        compare_hint: 'Enter tickers separated by commas',
-        chat_placeholder: 'Ask about {ticker}...',
-        ask_placeholder: 'e.g. What is MACD? How to read RSI?',
-        factor_placeholder: 'e.g. rsi(14) < 30 and volume > sma(volume, 20)',
-        buy_placeholder: 'Buy signal (e.g. rsi(14) < 30)',
-        sell_placeholder: 'Sell signal (e.g. rsi(14) > 70)',
-        export_csv: '📥 Export CSV',
-        predict_hint: 'Click Predict to run LLM analysis',
-        no_news: 'No recent news',
-        no_financials: 'No financial data',
-        no_risk: 'No risk data',
-        error_loading: 'Failed to load',
-        copied: 'Copied!',
-      },
-      zh: {
-        search_placeholder: '输入股票代码或公司名称搜索...',
-        predict_btn: '🔮 预测',
-        share_btn: '🔗 分享',
-        watchlist_btn: '☆ 自选',
-        dashboard: '首页',
-        account: '💰 账户',
-        positions: '📊 持仓',
-        watchlist: '⭐ 自选股',
-        recent_stocks: '🕐 最近股票',
-        recent_preds: '🔮 最近预测',
-        compare_stocks: '📊 股票对比',
-        market_overview: '📊 市场概览',
-        tomorrow_guide: '⭐ 自选股 — 明日交易指导',
-        no_positions: '暂无持仓',
-        no_preds: '暂无预测',
-        no_watchlist: '暂无自选股。在个股页面点击 ☆ 添加。',
-        overall_signal: '综合信号',
-        confidence: '置信度',
-        support: '支撑位',
-        resistance: '阻力位',
-        overlay: '叠加',
-        news: '📰 新闻',
-        financials: '📊 财报',
-        risk: '⚠️ 风险评估',
-        factor_lab: '🧪 因子实验室',
-        ask_anything: '💬 智能问答',
-        backtest: '📊 回测',
-        run_backtest: '运行回测',
-        compare_btn: '对比 RSI vs MACD vs BB',
-        llm_settings: '⚙️ LLM 设置',
-        base_url: '接口地址',
-        api_key: 'API 密钥',
-        model_preset: '模型预设',
-        model: '模型',
-        temperature: '温度 (0-1)',
-        max_tokens: '最大 Token',
-        enable_llm: '启用 LLM 预测',
-        cancel: '取消',
-        save: '保存',
-        loading: '正在从 Yahoo Finance 获取数据...',
-        search_stocks: '搜索股票',
-        enter_ticker: '输入股票代码或公司名称',
-        factor_lab_nav: '因子实验室',
-        backtest_nav: '回测',
-        dashboard_nav: '首页',
-        compare_hint: '输入股票代码，用逗号分隔',
-        chat_placeholder: '提问关于 {ticker} 的问题...',
-        ask_placeholder: '例如：什么是 MACD？如何看 RSI？',
-        factor_placeholder: '例如：rsi(14) < 30 和 volume > sma(volume, 20)',
-        buy_placeholder: '买入信号（例如：rsi(14) < 30）',
-        sell_placeholder: '卖出信号（例如：rsi(14) > 70）',
-        export_csv: '📥 导出 CSV',
-        predict_hint: '点击预测获取 LLM 分析',
-        no_news: '暂无新闻',
-        no_financials: '暂无财报数据',
-        no_risk: '暂无风险数据',
-        error_loading: '加载失败',
-        copied: '已复制！',
-      },
-    };
+    // Translations loaded from external JSON files
+    let I18N = { en: {}, zh: {} };
+
+    async function loadTranslations() {
+      try {
+        const [enRes, zhRes] = await Promise.all([
+          fetch('/static/locales/en.json'),
+          fetch('/static/locales/zh.json'),
+        ]);
+        I18N.en = await enRes.json();
+        I18N.zh = await zhRes.json();
+      } catch (e) {
+        console.error('Failed to load translations:', e);
+      }
+    }
 
     let currentLang = localStorage.getItem('lang') || (navigator.language.startsWith('zh') ? 'zh' : 'en');
     function t(key) { return I18N[currentLang]?.[key] || I18N.en[key] || key; }
@@ -1234,7 +1127,8 @@
       $('lang-btn').title = newLang === 'en' ? 'Language / 语言' : '语言 / Language';
       showToast(newLang === 'zh' ? '已切换到中文' : 'Switched to English', 'info', 2000);
     });
-    setLang(currentLang); // apply initial language
+    // load translations then apply
+    loadTranslations().then(() => setLang(currentLang));
 
     // initialize Lucide icons
     if (typeof lucide !== 'undefined') {
