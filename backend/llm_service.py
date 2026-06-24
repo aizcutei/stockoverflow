@@ -313,6 +313,187 @@ MODEL_PRESETS = {
 }
 
 
+# ── Anomaly detection ────────────────────────────────────────────────
+
+
+def detect_anomaly(candles: list[dict], threshold_pct: float = 5.0) -> dict | None:
+    """Detect if the latest candle is an anomaly (>threshold% move).
+
+    Returns anomaly info or None if no anomaly detected.
+    """
+    if len(candles) < 2:
+        return None
+
+    latest = candles[-1]
+    prev = candles[-2]
+
+    change_pct = (latest["close"] - prev["close"]) / prev["close"] * 100
+    volume_ratio = latest["volume"] / max(1, sum(c["volume"] for c in candles[-20:]) / 20) if len(candles) >= 20 else 1
+
+    is_anomaly = abs(change_pct) >= threshold_pct or volume_ratio >= 3.0
+
+    if not is_anomaly:
+        return None
+
+    return {
+        "ticker": "",  # filled by caller
+        "date": latest["date"],
+        "close": latest["close"],
+        "change_pct": round(change_pct, 2),
+        "volume_ratio": round(volume_ratio, 2),
+        "direction": "up" if change_pct > 0 else "down",
+        "is_price_anomaly": abs(change_pct) >= threshold_pct,
+        "is_volume_anomaly": volume_ratio >= 3.0,
+    }
+
+
+def bull_bear_debate(ticker: str, indicators: list[dict], overall: dict, current_price: float = None) -> dict:
+    """Generate structured bull vs bear debate with arguments on both sides."""
+    config = get_config()
+    if not config.get("enabled") or not config.get("api_key"):
+        return {"error": "LLM is not configured."}
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
+
+    ind_summary = "\n".join(
+        f"- {ind['name']}: {ind['signal']} (strength {ind['strength']}/100) — {ind.get('reason', '')}"
+        for ind in indicators
+    )
+
+    prompt = f"""You are a debate moderator. Present both sides of the {ticker} trade (current price: ${current_price or 'N/A'}).
+
+Technical indicators:
+{ind_summary}
+
+Overall signal: {overall.get('signal')} (score: {overall.get('score')})
+
+Respond in JSON:
+{{
+  "bull_case": {{
+    "thesis": "<1 sentence bull thesis>",
+    "arguments": ["arg1", "arg2", "arg3"],
+    "target_price": <number>,
+    "probability": <0-100>
+  }},
+  "bear_case": {{
+    "thesis": "<1 sentence bear thesis>",
+    "arguments": ["arg1", "arg2", "arg3"],
+    "target_price": <number>,
+    "probability": <0-100>
+  }},
+  "verdict": "<which side is stronger and why, 1-2 sentences>",
+  "key_catalyst": "<the one thing that could tip the balance>"
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["model"],
+            temperature=0.4,
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+        if raw.startswith("json"):
+            raw = raw[4:].strip()
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {"error": "LLM returned invalid JSON", "raw": raw}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def analyze_news_impact(ticker: str, news_items: list[dict], holdings: list[dict] = None) -> dict:
+    """Deep analysis of news impact on a stock and user's holdings."""
+    config = get_config()
+    if not config.get("enabled") or not config.get("api_key"):
+        return {"error": "LLM is not configured."}
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
+
+    news_text = "\n".join(
+        f"- {n.get('title', '')} ({n.get('publisher', '')}, {n.get('published_at', '')[:10]})"
+        for n in news_items[:10]
+    )
+
+    holdings_text = ""
+    if holdings:
+        holdings_text = "\nUser's holdings:\n" + "\n".join(
+            f"- {h['ticker']}: {h.get('quantity', 0)} shares @ ${h.get('avg_cost', 0)}"
+            for h in holdings
+        )
+
+    prompt = f"""Analyze these news headlines for {ticker} and explain their investment impact.
+{holdings_text}
+
+News:
+{news_text}
+
+Respond in JSON:
+{{
+  "overall_impact": "bullish" | "bearish" | "neutral",
+  "impact_score": <-100 to 100>,
+  "key_themes": ["theme1", "theme2"],
+  "holdings_impact": "<how this affects user's portfolio, or 'N/A' if no holdings>",
+  "action_suggestion": "<what the user should consider doing>",
+  "one_line_summary": "<concise summary>"
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["model"],
+            temperature=0.3,
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+        if raw.startswith("json"):
+            raw = raw[4:].strip()
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {"error": "LLM returned invalid JSON", "raw": raw}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def explain_anomaly(ticker: str, anomaly: dict, news_text: str = "") -> dict:
+    """Use LLM to explain why a stock had an anomalous move."""
+    config = get_config()
+    if not config.get("enabled") or not config.get("api_key"):
+        return {"error": "LLM is not configured."}
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
+
+    direction = "surged" if anomaly["direction"] == "up" else "dropped"
+    news_block = f"\nRecent news:\n{news_text}" if news_text else ""
+
+    prompt = f"""{ticker} {direction} {abs(anomaly['change_pct'])}% on {anomaly['date']} (close: ${anomaly['close']}).
+Volume was {anomaly['volume_ratio']}x the 20-day average.{news_block}
+
+Explain in 2-3 sentences WHY this likely happened. Be specific and factual.
+If news is available, reference it. If not, suggest possible reasons based on the price action."""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["model"],
+            temperature=0.3,
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return {"explanation": response.choices[0].message.content.strip()}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_model_presets() -> dict:
     """Return available model presets."""
     return MODEL_PRESETS

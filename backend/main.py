@@ -433,6 +433,75 @@ async def api_stock_financials(ticker: str):
     return get_financial_summary(ticker)
 
 
+@app.get("/api/stock/{ticker}/news-impact")
+async def api_news_impact(ticker: str, db: Session = Depends(get_db)):
+    """Deep analysis of news impact on a stock and user's holdings."""
+    from backend.llm_service import analyze_news_impact
+    from backend.news_service import fetch_news
+    from backend.paper_trading import get_account_summary
+
+    ticker = ticker.upper().strip()
+    news = fetch_news(ticker, limit=10)
+    if not news:
+        return {"error": "No news available"}
+
+    # get user's positions
+    account = get_account_summary(db)
+    holdings = [
+        {"ticker": p["ticker"], "quantity": p["quantity"], "avg_cost": p["avg_cost"]}
+        for p in account.get("positions", [])
+    ]
+
+    return analyze_news_impact(ticker, news, holdings)
+
+
+class BullBearDebateBody(BaseModel):
+    indicators: list[dict]
+    overall: dict
+    current_price: float | None = None
+
+
+@app.post("/api/llm/bull-bear-debate/{ticker}")
+async def api_bull_bear_debate(ticker: str, body: BullBearDebateBody):
+    """Structured bull vs bear debate with arguments on both sides."""
+    from backend.llm_service import bull_bear_debate
+    return bull_bear_debate(ticker.upper(), body.indicators, body.overall, body.current_price)
+
+
+@app.get("/api/stock/{ticker}/anomaly")
+async def api_stock_anomaly(ticker: str, threshold: float = Query(5.0), db: Session = Depends(get_db)):
+    """Detect price anomalies (>threshold% move) and explain with LLM."""
+    from backend.llm_service import detect_anomaly, explain_anomaly
+    from backend.news_service import get_news_for_llm
+
+    ticker = ticker.upper().strip()
+    detail = get_cached(ticker, db)
+    if detail is None:
+        try:
+            detail = fetch_and_save(ticker, db)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+    candles = [
+        {"date": str(c.date), "close": c.close, "volume": c.volume}
+        for c in detail.candles
+    ]
+
+    anomaly = detect_anomaly(candles, threshold)
+    if anomaly is None:
+        return {"detected": False, "message": f"No anomaly detected (threshold: {threshold}%)"}
+
+    anomaly["ticker"] = ticker
+    news_text = get_news_for_llm(ticker, limit=5)
+    explanation = explain_anomaly(ticker, anomaly, news_text)
+
+    return {
+        "detected": True,
+        "anomaly": anomaly,
+        "explanation": explanation,
+    }
+
+
 @app.get("/api/stock/{ticker}/options")
 async def api_stock_options(ticker: str):
     """Get options chain data for nearest expiry."""
