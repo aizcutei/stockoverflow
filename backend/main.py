@@ -461,6 +461,27 @@ class BullBearDebateBody(BaseModel):
     current_price: float | None = None
 
 
+@app.get("/api/llm/portfolio-review")
+async def api_portfolio_review(db: Session = Depends(get_db)):
+    """Generate daily portfolio review for all held stocks."""
+    from backend.llm_service import generate_portfolio_review
+    from backend.paper_trading import get_account_summary
+
+    account = get_account_summary(db)
+    positions = account.get("positions", [])
+    if not positions:
+        return {"error": "No positions to review"}
+
+    # get indicators for each held stock
+    indicators_map = {}
+    for pos in positions:
+        detail = get_cached(pos["ticker"], db)
+        if detail:
+            indicators_map[pos["ticker"]] = detail.indicators
+
+    return generate_portfolio_review(positions, indicators_map)
+
+
 @app.post("/api/llm/bull-bear-debate/{ticker}")
 async def api_bull_bear_debate(ticker: str, body: BullBearDebateBody):
     """Structured bull vs bear debate with arguments on both sides."""
@@ -889,6 +910,21 @@ async def api_factor_library(db: Session = Depends(get_db)):
         for f in customs
     ]
     return builtins + custom_list
+
+
+@app.get("/api/factors/categories")
+async def api_factor_categories():
+    """Get factor categories with descriptions."""
+    from backend.factor_engine import FACTOR_CATEGORIES, BUILTIN_FACTORS
+    categories = {}
+    for name, desc in FACTOR_CATEGORIES.items():
+        factors = [f for f in BUILTIN_FACTORS if f.get("category") == name]
+        categories[name] = {
+            "description": desc,
+            "count": len(factors),
+            "factors": factors,
+        }
+    return categories
 
 
 class CustomFactorBody(BaseModel):

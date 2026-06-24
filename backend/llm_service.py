@@ -347,6 +347,61 @@ def detect_anomaly(candles: list[dict], threshold_pct: float = 5.0) -> dict | No
     }
 
 
+def generate_portfolio_review(positions: list[dict], indicators_map: dict[str, list[dict]]) -> dict:
+    """Generate a daily portfolio review for all held stocks."""
+    config = get_config()
+    if not config.get("enabled") or not config.get("api_key"):
+        return {"error": "LLM is not configured."}
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"])
+
+    pos_text = "\n".join(
+        f"- {p['ticker']}: {p['quantity']} shares @ ${p['avg_cost']}, current ${p.get('current_price', '?')}, P&L {p.get('unrealized_pct', '?')}%"
+        for p in positions
+    )
+
+    ind_text = ""
+    for ticker, indicators in indicators_map.items():
+        signals = [f"{ind['name']}={ind['signal']}" for ind in indicators[:6]]
+        ind_text += f"\n{ticker}: {', '.join(signals)}"
+
+    prompt = f"""Generate a daily portfolio review. Be concise and actionable.
+
+Holdings:
+{pos_text}
+
+Indicator signals:{ind_text}
+
+Respond in JSON:
+{{
+  "summary": "<2-3 sentence portfolio overview>",
+  "risk_level": "low" | "medium" | "high",
+  "actions": [
+    {{"ticker": "<TICKER>", "action": "hold" | "reduce" | "add" | "exit", "reason": "<brief reason>"}}
+  ],
+  "market_outlook": "<1 sentence overall market sentiment>"
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=config["model"],
+            temperature=0.3,
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+        if raw.startswith("json"):
+            raw = raw[4:].strip()
+        return json.loads(raw)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def bull_bear_debate(ticker: str, indicators: list[dict], overall: dict, current_price: float = None) -> dict:
     """Generate structured bull vs bear debate with arguments on both sides."""
     config = get_config()

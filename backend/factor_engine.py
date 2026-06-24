@@ -724,84 +724,225 @@ def compute_factor_correlation(candles: list[dict], factor_names: list[str] = No
     }
 
 
+FACTOR_CATEGORIES = {
+    "Momentum": "https://en.wikipedia.org/wiki/Momentum_(technical_analysis)",
+    "Mean Reversion": "https://en.wikipedia.org/wiki/Mean_reversion_(finance)",
+    "Trend": "https://en.wikipedia.org/wiki/Trend_following",
+    "Volatility": "https://en.wikipedia.org/wiki/Volatility_(finance)",
+    "Volume": "https://en.wikipedia.org/wiki/Volume_analysis",
+    "Breakout": "https://en.wikipedia.org/wiki/Breakout_(technical_analysis)",
+    "Composite": "Multi-factor combinations",
+}
+
 BUILTIN_FACTORS = [
+    # ── Momentum ──
     {
         "name": "RSI Oversold",
         "category": "Momentum",
         "expression": "rsi(14) < 30",
-        "description": "RSI below 30 indicates oversold conditions",
+        "description": "RSI below 30 indicates oversold conditions — potential bounce",
+        "signal_type": "buy",
     },
     {
         "name": "RSI Overbought",
         "category": "Momentum",
         "expression": "rsi(14) > 70",
-        "description": "RSI above 70 indicates overbought conditions",
+        "description": "RSI above 70 indicates overbought conditions — potential pullback",
+        "signal_type": "sell",
+    },
+    {
+        "name": "RSI Divergence (Bullish)",
+        "category": "Momentum",
+        "expression": "rsi(14) < 40 and rsi(14) > rsi(14)",
+        "description": "RSI making higher lows while price makes lower lows",
+        "signal_type": "buy",
     },
     {
         "name": "MACD Bullish Cross",
         "category": "Momentum",
         "expression": "macd_cross('bullish')",
-        "description": "MACD histogram crosses above zero",
+        "description": "MACD histogram crosses above zero — momentum shifting up",
+        "signal_type": "buy",
     },
     {
         "name": "MACD Bearish Cross",
         "category": "Momentum",
         "expression": "macd_cross('bearish')",
-        "description": "MACD histogram crosses below zero",
+        "description": "MACD histogram crosses below zero — momentum shifting down",
+        "signal_type": "sell",
+    },
+    {
+        "name": "Stochastic Oversold",
+        "category": "Momentum",
+        "expression": "stochastic_k(14) < 20",
+        "description": "Stochastic %K below 20 — oversold territory",
+        "signal_type": "buy",
+    },
+    {
+        "name": "Stochastic Overbought",
+        "category": "Momentum",
+        "expression": "stochastic_k(14) > 80",
+        "description": "Stochastic %K above 80 — overbought territory",
+        "signal_type": "sell",
+    },
+    {
+        "name": "Williams %R Oversold",
+        "category": "Momentum",
+        "expression": "williams_r(14) < -80",
+        "description": "Williams %R below -80 — oversold",
+        "signal_type": "buy",
+    },
+    {
+        "name": "CCI Extreme Low",
+        "category": "Momentum",
+        "expression": "cci(20) < -100",
+        "description": "CCI below -100 — oversold cyclical low",
+        "signal_type": "buy",
+    },
+    {
+        "name": "N-Day Momentum",
+        "category": "Momentum",
+        "expression": "returns(20) > 0.1",
+        "description": "20-day return exceeds 10% — strong momentum",
+        "signal_type": "buy",
+    },
+
+    # ── Mean Reversion ──
+    {
+        "name": "Price Below Lower BB",
+        "category": "Mean Reversion",
+        "expression": "close < bb_lower(20, 2)",
+        "description": "Price dropped below Bollinger lower band — mean reversion opportunity",
+        "signal_type": "buy",
+    },
+    {
+        "name": "Price Above Upper BB",
+        "category": "Mean Reversion",
+        "expression": "close > bb_upper(20, 2)",
+        "description": "Price above Bollinger upper band — potential pullback",
+        "signal_type": "sell",
     },
     {
         "name": "Bollinger Squeeze",
         "category": "Volatility",
         "expression": "(bb_upper(20, 2) - bb_lower(20, 2)) / bb_middle(20) < 0.05",
         "description": "Bollinger bandwidth is very narrow — breakout imminent",
+        "signal_type": "watch",
     },
-    {
-        "name": "Price Below Lower BB",
-        "category": "Mean Reversion",
-        "expression": "close < bb_lower(20, 2)",
-        "description": "Price dropped below Bollinger lower band",
-    },
+
+    # ── Trend ──
     {
         "name": "Strong Trend (ADX)",
         "category": "Trend",
         "expression": "adx(14) > 25",
-        "description": "ADX above 25 indicates a strong trend",
+        "description": "ADX above 25 indicates a strong trend in progress",
+        "signal_type": "watch",
     },
+    {
+        "name": "Weak Trend",
+        "category": "Trend",
+        "expression": "adx(14) < 20",
+        "description": "ADX below 20 — no clear trend, ranging market",
+        "signal_type": "neutral",
+    },
+    {
+        "name": "Price Above VWAP",
+        "category": "Trend",
+        "expression": "close > vwap()",
+        "description": "Price trading above VWAP — bullish intraday bias",
+        "signal_type": "buy",
+    },
+    {
+        "name": "Price Below VWAP",
+        "category": "Trend",
+        "expression": "close < vwap()",
+        "description": "Price trading below VWAP — bearish intraday bias",
+        "signal_type": "sell",
+    },
+
+    # ── Volatility ──
+    {
+        "name": "High Volatility",
+        "category": "Volatility",
+        "expression": "volatility(20) > 0.4",
+        "description": "Annualized volatility above 40% — high risk environment",
+        "signal_type": "watch",
+    },
+    {
+        "name": "Low Volatility",
+        "category": "Volatility",
+        "expression": "volatility(20) < 0.15",
+        "description": "Annualized volatility below 15% — calm market, potential breakout setup",
+        "signal_type": "watch",
+    },
+
+    # ── Volume ──
     {
         "name": "Volume Spike",
         "category": "Volume",
         "expression": "volume > sma(volume, 20) * 1.5",
-        "description": "Volume is 50% above its 20-day average",
-    },
-    {
-        "name": "Stochastic Oversold",
-        "category": "Momentum",
-        "expression": "stochastic_k(14) < 20",
-        "description": "Stochastic %K below 20 — oversold",
+        "description": "Volume is 50% above its 20-day average — institutional activity",
+        "signal_type": "watch",
     },
     {
         "name": "MFI Oversold",
         "category": "Volume",
         "expression": "mfi(14) < 20",
-        "description": "Money Flow Index below 20 — money outflow",
+        "description": "Money Flow Index below 20 — money outflow, potential reversal",
+        "signal_type": "buy",
     },
     {
-        "name": "Price Above VWAP",
-        "category": "Price",
-        "expression": "close > vwap()",
-        "description": "Price trading above VWAP — bullish bias",
+        "name": "MFI Overbought",
+        "category": "Volume",
+        "expression": "mfi(14) > 80",
+        "description": "Money Flow Index above 80 — money inflow, potential topping",
+        "signal_type": "sell",
     },
     {
-        "name": "High Volatility",
-        "category": "Volatility",
-        "expression": "volatility(20) > 0.4",
-        "description": "Annualized volatility above 40%",
+        "name": "OBV Divergence",
+        "category": "Volume",
+        "expression": "obv() > ema(obv(), 20)",
+        "description": "OBV above its 20 EMA — accumulation pattern",
+        "signal_type": "buy",
+    },
+
+    # ── Breakout ──
+    {
+        "name": "52-Week High Breakout",
+        "category": "Breakout",
+        "expression": "close >= returns(250) * close * 0.98",
+        "description": "Price near 52-week high — potential breakout",
+        "signal_type": "buy",
     },
     {
-        "name": "N-Day Momentum",
-        "category": "Momentum",
-        "expression": "returns(20) > 0.1",
-        "description": "20-day return exceeds 10%",
+        "name": "Price Crosses SMA 200",
+        "category": "Breakout",
+        "expression": "close > sma(close, 200)",
+        "description": "Price above 200-day SMA — long-term bullish",
+        "signal_type": "buy",
+    },
+
+    # ── Composite (multi-factor) ──
+    {
+        "name": "Oversold Combo",
+        "category": "Composite",
+        "expression": "rsi(14) < 35 and stochastic_k(14) < 25 and mfi(14) < 30",
+        "description": "RSI + Stochastic + MFI all oversold — strong buy signal",
+        "signal_type": "buy",
+    },
+    {
+        "name": "Overbought Combo",
+        "category": "Composite",
+        "expression": "rsi(14) > 65 and stochastic_k(14) > 75 and mfi(14) > 70",
+        "description": "RSI + Stochastic + MFI all overbought — strong sell signal",
+        "signal_type": "sell",
+    },
+    {
+        "name": "Trend + Volume",
+        "category": "Composite",
+        "expression": "adx(14) > 25 and volume > sma(volume, 20) * 1.3",
+        "description": "Strong trend with volume confirmation",
+        "signal_type": "buy",
     },
     {
         "name": "Williams %R Oversold",
