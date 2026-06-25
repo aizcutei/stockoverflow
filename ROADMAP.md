@@ -149,7 +149,7 @@
 
 ### 12. 生产化
 - [x] **用户认证**：API Key 认证（生成/验证/管理 + /api/auth/* 端点）
-- [ ] **云端部署**：数据库迁移到 PostgreSQL
+- [x] **云端部署**：Railway + Fly.io + Heroku 配置（Procfile + DEPLOY.md）
 - [x] **性能优化**：defer 脚本加载、preconnect CDN、API 性能监控面板
 - [x] **监控告警**：API 响应时间追踪（/api/perf endpoint）
 
