@@ -724,10 +724,17 @@
         </div>
         <div id="factor-section">
           <h3>🧪 Factor Lab</h3>
-          <div class="factor-input-row">
-            <input id="factor-input" type="text" placeholder="e.g. rsi(14) < 30 and volume > sma(volume, 20)" />
-            <button id="factor-eval-btn">Evaluate</button>
-            <button id="save-factor-btn" style="background:var(--yellow);border-color:var(--yellow)">💾 Save</button>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button id="wizard-toggle" style="padding:5px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;cursor:pointer">🧙 Wizard Mode</button>
+            <button id="advanced-toggle" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-size:12px;cursor:pointer">⌨️ Advanced</button>
+          </div>
+          <div id="factor-wizard" style="display:none;margin-bottom:10px"></div>
+          <div id="factor-advanced">
+            <div class="factor-input-row">
+              <input id="factor-input" type="text" placeholder="e.g. rsi(14) < 30 and volume > sma(volume, 20)" />
+              <button id="factor-eval-btn">Evaluate</button>
+              <button id="save-factor-btn" style="background:var(--yellow);border-color:var(--yellow)">💾 Save</button>
+            </div>
           </div>
           <div class="factor-lib" id="factor-lib"></div>
           <div class="factor-result" id="factor-result">
@@ -3221,6 +3228,125 @@
     loadFactorLibrary();
     loadStrategyTemplates();
     loadComboFactors();
+
+    // Factor Wizard Mode
+    const WIZARD_STEPS = [
+      {
+        question: "What type of signal are you looking for?",
+        options: [
+          { label: "🟢 Oversold / Buy signal", next: "buy_indicator" },
+          { label: "🔴 Overbought / Sell signal", next: "sell_indicator" },
+          { label: "📊 Trend strength", next: "trend" },
+          { label: "📈 Volume confirmation", next: "volume" },
+        ],
+      },
+      {
+        buy_indicator: {
+          question: "Which indicator?",
+          options: [
+            { label: "RSI", build: (prev) => ({ expr: "rsi(14) < ", param: 30, desc: "RSI oversold" }) },
+            { label: "Stochastic %K", build: (prev) => ({ expr: "stochastic_k(14) < ", param: 20, desc: "Stochastic oversold" }) },
+            { label: "MFI", build: (prev) => ({ expr: "mfi(14) < ", param: 20, desc: "Money flow oversold" }) },
+            { label: "Williams %R", build: (prev) => ({ expr: "williams_r(14) < ", param: -80, desc: "Williams %R oversold" }) },
+          ],
+        },
+        sell_indicator: {
+          question: "Which indicator?",
+          options: [
+            { label: "RSI", build: (prev) => ({ expr: "rsi(14) > ", param: 70, desc: "RSI overbought" }) },
+            { label: "Stochastic %K", build: (prev) => ({ expr: "stochastic_k(14) > ", param: 80, desc: "Stochastic overbought" }) },
+            { label: "MFI", build: (prev) => ({ expr: "mfi(14) > ", param: 80, desc: "Money flow overbought" }) },
+          ],
+        },
+        trend: {
+          question: "Trend direction?",
+          options: [
+            { label: "Strong uptrend", build: () => ({ expr: "adx(14) > 25", param: null, desc: "Strong trend" }) },
+            { label: "Price above VWAP", build: () => ({ expr: "close > vwap()", param: null, desc: "Above VWAP" }) },
+            { label: "Price above SMA 200", build: () => ({ expr: "close > sma(close, 200)", param: null, desc: "Above 200 SMA" }) },
+          ],
+        },
+        volume: {
+          question: "Volume condition?",
+          options: [
+            { label: "High volume (>1.5x avg)", build: () => ({ expr: "volume > sma(volume, 20) * 1.5", param: null, desc: "Volume spike" }) },
+            { label: "MFI shows inflow", build: () => ({ expr: "mfi(14) > 50", param: null, desc: "Money inflow" }) },
+            { label: "OBV rising", build: () => ({ expr: "obv() > ema(obv(), 20)", param: null, desc: "OBV accumulation" }) },
+          ],
+        },
+      },
+    ];
+
+    let wizardState = { step: 0, choice: null };
+
+    document.addEventListener('click', e => {
+      if (e.target.id === 'wizard-toggle') {
+        $('factor-wizard').style.display = 'block';
+        $('factor-advanced').style.display = 'none';
+        wizardState = { step: 0, choice: null };
+        renderWizard();
+      }
+      if (e.target.id === 'advanced-toggle') {
+        $('factor-wizard').style.display = 'none';
+        $('factor-advanced').style.display = 'block';
+      }
+      if (e.target.dataset.wizardOpt !== undefined) {
+        handleWizardChoice(e.target.dataset.wizardOpt, e.target.dataset.wizardNext, e.target.dataset.wizardBuild);
+      }
+    });
+
+    function renderWizard() {
+      const el = $('factor-wizard');
+      if (!el) return;
+
+      if (wizardState.step === 0) {
+        const step = WIZARD_STEPS[0];
+        el.innerHTML = `
+          <div style="font-size:13px;margin-bottom:8px;color:var(--text-dim)">${step.question}</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${step.options.map((opt, i) =>
+              `<button data-wizard-opt="${i}" data-wizard-next="${opt.next}" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer;text-align:left;transition:border-color 0.2s">${opt.label}</button>`
+            ).join('')}
+          </div>
+        `;
+      } else if (wizardState.step === 1) {
+        const stepData = WIZARD_STEPS[1][wizardState.choice];
+        if (!stepData) return;
+        el.innerHTML = `
+          <div style="font-size:13px;margin-bottom:8px;color:var(--text-dim)">${stepData.question}</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${stepData.options.map((opt, i) =>
+              `<button data-wizard-opt="${i}" data-wizard-build="${i}" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer;text-align:left;transition:border-color 0.2s">${opt.label}</button>`
+            ).join('')}
+          </div>
+        `;
+      } else if (wizardState.step === 2) {
+        const result = wizardState.result;
+        el.innerHTML = `
+          <div style="font-size:13px;margin-bottom:8px;color:var(--text-dim)">Your factor:</div>
+          <div style="padding:10px;background:var(--surface2);border-radius:8px;font-family:monospace;font-size:13px;margin-bottom:8px">${escHtml(result.expr + (result.param !== null ? result.param : ''))}</div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">${escHtml(result.desc)}</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="$('factor-input').value='${escHtml(result.expr + (result.param !== null ? result.param : ''))}';$('advanced-toggle').click();evalFactor()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;cursor:pointer">▶ Test Now</button>
+            <button onclick="wizardState={step:0,choice:null};renderWizard()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer">← Start Over</button>
+          </div>
+        `;
+      }
+    }
+
+    function handleWizardChoice(optIdx, next, buildIdx) {
+      if (wizardState.step === 0) {
+        wizardState.choice = next;
+        wizardState.step = 1;
+        renderWizard();
+      } else if (wizardState.step === 1) {
+        const stepData = WIZARD_STEPS[1][wizardState.choice];
+        const opt = stepData.options[parseInt(buildIdx)];
+        wizardState.result = opt.build(wizardState.choice);
+        wizardState.step = 2;
+        renderWizard();
+      }
+    }
 
     // Multi-factor combo
     let selectedComboFactors = [];
