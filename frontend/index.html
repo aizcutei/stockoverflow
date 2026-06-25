@@ -733,6 +733,15 @@
           <div class="factor-result" id="factor-result">
             <div id="factor-chart"></div>
           </div>
+          <div style="margin-top:12px">
+            <h4 style="font-size:13px;color:var(--text-dim);margin-bottom:6px">🔗 Multi-Factor Combo</h4>
+            <div id="combo-factors" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+            <div class="factor-input-row">
+              <input id="combo-weights" type="text" placeholder="Weights (e.g. 2,1,1) — comma separated" />
+              <button id="combo-run-btn" style="background:var(--accent);border-color:var(--accent)">Combine</button>
+            </div>
+            <div id="combo-result"></div>
+          </div>
           <div class="bt-section">
             <h4>📊 Strategy Templates</h4>
             <div id="strategy-templates" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
@@ -3201,6 +3210,94 @@
     // load factor library and strategy templates on page load
     loadFactorLibrary();
     loadStrategyTemplates();
+    loadComboFactors();
+
+    // Multi-factor combo
+    let selectedComboFactors = [];
+
+    function loadComboFactors() {
+      fetch('/api/factors/library')
+        .then(r => r.json())
+        .then(factors => {
+          const numericFactors = factors.filter(f => f.expression && !f.expression.includes(' and ') && !f.expression.includes(' or '));
+          const el = $('combo-factors');
+          if (!el) return;
+          el.innerHTML = numericFactors.slice(0, 12).map(f =>
+            `<span class="factor-lib-item" data-expr="${escHtml(f.expression)}" style="font-size:10px;cursor:pointer;opacity:0.6" title="${escHtml(f.description)}">${escHtml(f.name)}</span>`
+          ).join('');
+          el.querySelectorAll('.factor-lib-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const expr = btn.dataset.expr;
+              if (selectedComboFactors.includes(expr)) {
+                selectedComboFactors = selectedComboFactors.filter(f => f !== expr);
+                btn.style.opacity = '0.6';
+                btn.style.borderColor = 'var(--border)';
+              } else {
+                selectedComboFactors.push(expr);
+                btn.style.opacity = '1';
+                btn.style.borderColor = 'var(--accent)';
+              }
+            });
+          });
+        })
+        .catch(() => {});
+    }
+
+    document.addEventListener('click', e => {
+      if (e.target.id === 'combo-run-btn') runCombo();
+    });
+
+    async function runCombo() {
+      if (!currentTicker || !selectedComboFactors.length) return;
+      const weightsInput = $('combo-weights');
+      const resultEl = $('combo-result');
+      if (!resultEl) return;
+
+      const weightsStr = weightsInput?.value?.trim() || '';
+      const weights = weightsStr ? weightsStr.split(',').map(w => parseFloat(w.trim())).filter(w => !isNaN(w)) : null;
+
+      resultEl.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:6px">Computing...</div>';
+
+      try {
+        const res = await fetch(`/api/factors/multi/${encodeURIComponent(currentTicker)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expressions: selectedComboFactors, weights }),
+        });
+        const data = await res.json();
+        if (data.error || data.detail) {
+          resultEl.innerHTML = `<div style="color:var(--red);font-size:12px;padding:6px">${escHtml(data.detail || data.error)}</div>`;
+          return;
+        }
+
+        const score = data.latest_score || 0;
+        const q = data.latest_quintile || '?';
+        const sc = score > 0 ? 'var(--green)' : score < 0 ? 'var(--red)' : 'var(--text-dim)';
+
+        let html = `<div style="padding:8px;background:var(--surface2);border-radius:6px;font-size:12px">
+          <div style="display:flex;gap:16px;margin-bottom:6px">
+            <span>Score: <strong style="color:${sc}">${score}</strong></span>
+            <span>Quintile: <strong>${q}</strong></span>
+            <span>Factors: <strong>${data.expressions?.length || 0}</strong></span>
+          </div>`;
+
+        if (data.quintile_analysis?.length) {
+          html += '<div style="display:flex;gap:4px;margin-top:6px">';
+          for (const q of data.quintile_analysis) {
+            const rc = q.avg_return >= 0 ? 'var(--green)' : 'var(--red)';
+            html += `<div style="flex:1;text-align:center;background:var(--surface);border-radius:4px;padding:4px">
+              <div style="font-size:10px;color:var(--text-dim)">Q${q.quintile}</div>
+              <div style="font-size:13px;font-weight:600;color:${rc}">${q.avg_return}%</div>
+            </div>`;
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+        resultEl.innerHTML = html;
+      } catch (e) {
+        resultEl.innerHTML = `<div style="color:var(--red);font-size:12px;padding:6px">Failed.</div>`;
+      }
+    }
 
     async function loadStrategyTemplates() {
       try {
