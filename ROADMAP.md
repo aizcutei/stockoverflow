@@ -134,7 +134,7 @@
 ## 🔮 未来方向
 
 ### 10. 数据增强
-- [ ] **多数据源容灾**：yfinance 失败时降级到 Alpha Vantage / Twelve Data
+- [x] **多数据源容灾**：yfinance 失败时降级到 Alpha Vantage（需配置 API key）
 - [x] **SEC 文件解析**：SEC 日历事件（财报日期、分红日期）
 - [x] **分析师评级**：目标价 + 评级 + 分析师数量（/api/stock/{ticker}/analyst）
 - [x] **内部交易**：高管买卖记录（insider transactions API）

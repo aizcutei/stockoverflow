@@ -283,6 +283,26 @@ async def api_cache_stats():
     }
 
 
+@app.get("/api/system/sources")
+async def api_data_sources():
+    """Check available data sources and their status."""
+    import os
+    sources = {
+        "yfinance": {"available": True, "primary": True},
+        "alphavantage": {
+            "available": bool(os.environ.get("ALPHAVANTAGE_API_KEY")),
+            "primary": False,
+            "env_var": "ALPHAVANTAGE_API_KEY",
+        },
+        "twelvedata": {
+            "available": bool(os.environ.get("TWELVEDATA_API_KEY")),
+            "primary": False,
+            "env_var": "TWELVEDATA_API_KEY",
+        },
+    }
+    return sources
+
+
 @app.post("/api/cache/clear")
 async def api_cache_clear():
     """Clear all caches."""
