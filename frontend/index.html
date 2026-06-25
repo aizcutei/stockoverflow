@@ -146,6 +146,24 @@
     .sidebar-item:hover { background: var(--surface2); }
     .sidebar-item .si-ticker { font-weight: 600; color: var(--accent); }
     .sidebar-item .si-price { font-size: 11px; color: var(--text-dim); }
+    /* ── skeleton loading per section ── */
+    .section-loading {
+      position: relative; overflow: hidden;
+    }
+    .section-loading::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, var(--surface2) 50%, transparent 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    .section-skeleton {
+      background: var(--surface2); border-radius: 6px; height: 14px;
+      margin-bottom: 8px; opacity: 0.5;
+    }
+    .section-skeleton.short { width: 40%; }
+    .section-skeleton.medium { width: 70%; }
+    .section-skeleton.tall { height: 80px; }
+
     @media (max-width: 1100px) {
       .content-wrap { grid-template-columns: 1fr; }
       .indicators-panel { max-height: none !important; }
@@ -3288,6 +3306,22 @@
     loadFactorLibrary();
     loadStrategyTemplates();
     loadComboFactors();
+
+    // Section loading helpers
+    function showSectionLoading(el) {
+      if (!el) return;
+      el.classList.add('section-loading');
+    }
+    function hideSectionLoading(el) {
+      if (!el) return;
+      el.classList.remove('section-loading');
+    }
+    function showSkeleton(el, lines = 3) {
+      if (!el) return;
+      el.innerHTML = Array(lines).fill(0).map((_, i) =>
+        `<div class="section-skeleton ${i === lines - 1 ? 'short' : i === 0 ? 'medium' : ''}"></div>`
+      ).join('');
+    }
 
     // Sidebar
     const sidebar = $('sidebar');
