@@ -244,6 +244,41 @@ def get_options(ticker: str) -> dict:
         return {"ticker": ticker, "error": str(e)}
 
 
+def get_analyst_ratings(ticker: str) -> dict:
+    """Get analyst recommendations and target prices."""
+    cached = _from_cache(ticker, "analyst")
+    if cached:
+        return cached
+
+    try:
+        tk = yf.Ticker(ticker)
+        info = tk.info or {}
+
+        result = {
+            "ticker": ticker,
+            "target_mean": info.get("targetMeanPrice"),
+            "target_high": info.get("targetHighPrice"),
+            "target_low": info.get("targetLowPrice"),
+            "target_median": info.get("targetMedianPrice"),
+            "recommendation": info.get("recommendationKey"),
+            "recommendation_mean": info.get("recommendationMean"),
+            "number_of_analysts": info.get("numberOfAnalystOpinions"),
+            "current_price": info.get("regularMarketPrice") or info.get("currentPrice"),
+        }
+
+        # calculate upside/downside
+        if result["target_mean"] and result["current_price"]:
+            result["upside_pct"] = round(
+                (result["target_mean"] - result["current_price"]) / result["current_price"] * 100, 2
+            )
+
+        _to_cache(ticker, "analyst", result)
+        return result
+    except Exception as e:
+        logger.warning("Failed to fetch analyst ratings for %s: %s", ticker, e)
+        return {"ticker": ticker, "error": str(e)}
+
+
 def get_peer_comparison(ticker: str) -> dict:
     """Get basic peer comparison using sector/industry."""
     cached = _from_cache(ticker, "peers")

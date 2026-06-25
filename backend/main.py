@@ -434,6 +434,13 @@ async def api_stock_financials(ticker: str):
     return get_financial_summary(ticker)
 
 
+@app.get("/api/stock/{ticker}/analyst")
+async def api_analyst_ratings(ticker: str):
+    """Get analyst recommendations and target prices."""
+    from backend.financials_service import get_analyst_ratings
+    return get_analyst_ratings(ticker)
+
+
 @app.get("/api/stock/{ticker}/news-impact")
 async def api_news_impact(ticker: str, db: Session = Depends(get_db)):
     """Deep analysis of news impact on a stock and user's holdings."""

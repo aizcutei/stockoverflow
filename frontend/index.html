@@ -734,6 +734,8 @@
             <div id="factor-chart"></div>
           </div>
           <div class="bt-section">
+            <h4>📊 Strategy Templates</h4>
+            <div id="strategy-templates" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px"></div>
             <h4>📊 Backtest</h4>
             <div class="bt-row">
               <input id="bt-buy" type="text" placeholder="Buy signal (e.g. rsi(14) < 30)" />
@@ -3117,8 +3119,27 @@
       } catch (e) {}
     }
 
-    // load factor library on page load
+    // load factor library and strategy templates on page load
     loadFactorLibrary();
+    loadStrategyTemplates();
+
+    async function loadStrategyTemplates() {
+      try {
+        const res = await fetch('/api/backtest/templates');
+        const templates = await res.json();
+        const el = $('strategy-templates');
+        if (!el) return;
+        el.innerHTML = templates.map(t =>
+          `<span class="factor-lib-item" data-buy="${escHtml(t.buy_expr)}" data-sell="${escHtml(t.sell_expr)}" title="${escHtml(t.description)}">${escHtml(t.name)}</span>`
+        ).join('');
+        el.querySelectorAll('.factor-lib-item').forEach(btn => {
+          btn.addEventListener('click', () => {
+            $('bt-buy').value = btn.dataset.buy;
+            $('bt-sell').value = btn.dataset.sell;
+          });
+        });
+      } catch (e) {}
+    }
 
     // Strategy comparison
     document.addEventListener('click', e => {
