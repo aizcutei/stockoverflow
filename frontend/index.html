@@ -67,6 +67,10 @@
       background-clip: text;
     }
     header nav a:hover { color: var(--text) !important; }
+    header nav a.active {
+      color: var(--accent) !important; font-weight: 600;
+      border-bottom: 2px solid var(--accent); padding-bottom: 2px;
+    }
     .search-wrap { position: relative; flex: 1; max-width: 480px; }
     #search-input {
       width: 100%; padding: 10px 16px;
@@ -1484,10 +1488,13 @@
       try {
         const hash = window.location.hash;
         if (hash === '#factors') {
+          setActiveNav('factors');
           showFactorLabPage();
         } else if (hash === '#backtest') {
+          setActiveNav('backtest');
           showBacktestPage();
         } else {
+          setActiveNav('dashboard');
           const ticker = parseURLTicker();
           if (ticker) {
             searchInput.value = ticker;
@@ -2966,10 +2973,17 @@
     }
 
     // navigation links
+    function setActiveNav(target) {
+      document.querySelectorAll('[data-nav]').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-nav') === target);
+      });
+    }
+
     document.addEventListener('click', e => {
       if (e.target.matches('[data-nav]')) {
         e.preventDefault();
         const target = e.target.getAttribute('data-nav');
+        setActiveNav(target);
         if (target === 'factors') {
           window.location.hash = '#factors';
           showFactorLabPage();
