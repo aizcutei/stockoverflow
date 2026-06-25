@@ -2997,6 +2997,38 @@
       }
     }
 
+    // Factor signal markers on chart
+    function markFactorOnChart(dates, signals) {
+      if (!candleChart || !dates || !signals) return;
+
+      // remove existing markers
+      if (window._factorMarkers) {
+        try { candleChart.removeSeries(window._factorMarkers); } catch(_) {}
+      }
+
+      // create markers using a line series with special points
+      const markerSeries = candleChart.addLineSeries({
+        color: 'transparent',
+        lineWidth: 0,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+      });
+
+      const markerData = [];
+      for (let i = 0; i < dates.length && i < signals.length; i++) {
+        if (signals[i]) {
+          markerData.push({ time: dates[i], value: currentCandles.find(c => c.date === dates[i])?.low * 0.99 || 0 });
+        }
+      }
+
+      if (markerData.length) {
+        markerSeries.setData(markerData);
+        window._factorMarkers = markerSeries;
+        showToast(`${markerData.length} signals marked on chart`, 'info', 2000);
+      }
+    }
+
     /* ================================================================
        Q&A, Bull/Bear, Report, Factor Lab
        ================================================================ */
@@ -3065,10 +3097,12 @@
         const sigCount = data.signal_count_30d || 0;
         const valColor = isSignal ? (val ? 'var(--green)' : 'var(--red)') : 'var(--accent)';
         const valDisplay = isSignal ? (val ? 'TRUE ✓' : 'FALSE ✗') : fmtNum(val);
+        const markBtn = isSignal && data.values ? `<button onclick="markFactorOnChart(${escHtml(JSON.stringify(data.dates))}, ${escHtml(JSON.stringify(data.values))})" style="margin-top:6px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:11px;cursor:pointer">📍 Mark on Chart</button>` : '';
         result.innerHTML = `
           <div style="font-size:11px;color:var(--text-dim);font-family:monospace">${escHtml(data.expression)}</div>
           <div class="factor-val" style="color:${valColor}">${valDisplay}</div>
           ${isSignal ? `<div style="font-size:12px;color:var(--text-dim)">Signals in last 30 days: <strong>${sigCount}</strong></div>` : ''}
+          ${markBtn}
           <div id="factor-chart"></div>
         `;
         // render chart for numeric factor values
