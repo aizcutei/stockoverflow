@@ -171,22 +171,39 @@
     @media (max-width: 768px) {
       header { padding: 10px 12px; gap: 10px; }
       header h1 { font-size: 16px; }
+      header nav { gap: 8px; font-size: 12px; }
       .search-wrap { max-width: 100%; }
       #search-input { font-size: 16px; padding: 10px 12px; } /* prevent iOS zoom */
       main { padding: 12px; }
       #stock-info .ticker-label { font-size: 20px; }
+      #stock-info .header-row { flex-wrap: wrap; gap: 8px; }
       #chart { height: 300px; }
       #volume-chart { height: 80px; }
-      .indicators-panel { gap: 8px; }
+      #chart-container { border-radius: 8px; }
+      .tf-btn { padding: 6px 8px; font-size: 10px; }
+      .indicators-panel { gap: 8px; max-height: none; }
       .ind-card { padding: 10px; }
       .ind-card .ind-name { font-size: 12px; }
+      .ind-card .ind-levels { gap: 8px; }
+      .ind-card .level-item { padding: 6px; }
       .llm-card .llm-action { font-size: 22px; }
       .llm-card .llm-prices { grid-template-columns: 1fr 1fr; }
       .bt-metrics { grid-template-columns: repeat(2, 1fr); }
       .dash-grid { grid-template-columns: 1fr; }
+      .dash-card { padding: 12px; }
       .header-right { gap: 4px; }
       #settings-btn, #theme-btn, #lang-btn { width: 34px; height: 34px; font-size: 14px; }
-      #predict-btn, #share-btn { padding: 6px 10px; font-size: 12px; }
+      #predict-btn, #share-btn, #watchlist-btn { padding: 6px 10px; font-size: 12px; }
+      .overall-card { padding: 12px; }
+      .overall-card .signal-badge { font-size: 18px; }
+      .news-item { padding: 10px; }
+      .factor-input-row { flex-direction: column; }
+      .factor-input-row input, .factor-input-row button { width: 100%; }
+      .bt-row input, .bt-row button { width: 100%; }
+      .sidebar { width: 180px; }
+      #sidebar-toggle { top: 56px; }
+      .chat-input-row { flex-direction: column; }
+      .chat-input-row input, .chat-input-row button { width: 100%; }
     }
 
     /* ── chart ── */

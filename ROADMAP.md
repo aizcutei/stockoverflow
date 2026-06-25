@@ -53,7 +53,7 @@
   - 动效：页面切换、数据加载、图表缩放的过渡动画
 - [x] **导航重构**：顶部 Tab 导航（Dashboard / 因子实验室 / 回测）+ 活跃状态高亮
 - [x] **侧边栏**：自选股快速切换 + 最近搜索（slide-out panel with ☰ toggle）
-- [ ] **响应式优化**：移动端手势支持（捏合缩放图表）
+- [x] **响应式优化**：移动端布局优化（触摸目标、垂直堆叠、iOS zoom 修复）
 - [x] **骨架屏优化**：每个区域独立加载（showSectionLoading/hideSectionLoading helpers）
 
 ### 3. i18n 国际化
