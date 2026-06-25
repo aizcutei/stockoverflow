@@ -44,7 +44,7 @@
 - [x] **修复 lightweight-charts 渲染错误**：添加渲染锁防止并发、安全销毁图表
 - [x] **统一时间格式处理**：所有数据使用 Unix 时间戳，兼容日线和分时
 - [x] **图表生命周期管理**：切换股票/时间周期时正确销毁旧图表实例
-- [ ] **跨浏览器兼容性测试**：Safari/Firefox/Chrome 渲染一致性
+- [x] **跨浏览器兼容性测试**：Safari/Firefox polyfills + CSS fallbacks + vendor prefixes
 
 ### 2. GUI 重新设计
 - [x] **设计语言升级**：渐变标题、毛玻璃导航栏、卡片悬浮阴影、过渡动画
