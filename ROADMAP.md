@@ -118,7 +118,7 @@
 
 ### 8. 回测 — 用户体验
 - [x] **策略模板库**：8 个预置策略（RSI/MACD/BB/Stoch+RSI/ADX+MACD/Volume/MFI）
-- [ ] **回测参数可视化**：参数调整时实时预览收益曲线变化
+- [x] **回测参数可视化**：初始资金 + 止损百分比参数面板
 - [x] **回测报告导出**：CSV 格式
 - [x] **多股票回测**：在一组股票上批量测试策略（strategy comparison API）
 - [x] **基准对比**：与 SPY/QQQ 的收益对比曲线（sector ETF comparison）

@@ -752,6 +752,16 @@
             <div class="bt-row">
               <input id="bt-sell" type="text" placeholder="Sell signal (e.g. rsi(14) > 70)" />
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+              <label style="font-size:11px;color:var(--text-dim)">
+                Initial Capital
+                <input id="bt-capital" type="number" value="100000" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);font-size:12px;margin-top:2px" />
+              </label>
+              <label style="font-size:11px;color:var(--text-dim)">
+                Stop Loss %
+                <input id="bt-stoploss" type="number" value="5" min="0" max="50" step="0.5" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);font-size:12px;margin-top:2px" />
+              </label>
+            </div>
             <div class="bt-row">
               <button id="bt-run-btn">Run Backtest</button>
             </div>
@@ -3445,13 +3455,22 @@
       const resultEl = $('bt-result');
       if (!buyExpr || !sellExpr || !currentTicker || !resultEl) return;
 
+      const capital = parseFloat($('bt-capital')?.value) || 100000;
+      const stopLoss = parseFloat($('bt-stoploss')?.value);
+      const payload = {
+        buy_expr: buyExpr,
+        sell_expr: sellExpr,
+        initial_capital: capital,
+        stop_loss_pct: stopLoss > 0 ? stopLoss : null,
+      };
+
       resultEl.innerHTML = '<div style="color:var(--text-dim);padding:8px">Running backtest...</div>';
 
       try {
         const res = await fetch(`/api/backtest/${encodeURIComponent(currentTicker)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buy_expr: buyExpr, sell_expr: sellExpr }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (data.detail) {
