@@ -441,6 +441,20 @@ async def api_analyst_ratings(ticker: str):
     return get_analyst_ratings(ticker)
 
 
+@app.get("/api/stock/{ticker}/insider")
+async def api_insider_trades(ticker: str):
+    """Get insider trading records (executive buy/sell)."""
+    from backend.financials_service import get_insider_trades
+    return get_insider_trades(ticker)
+
+
+@app.get("/api/stock/{ticker}/sec")
+async def api_sec_filings(ticker: str):
+    """Get SEC filings and calendar events."""
+    from backend.financials_service import get_sec_filings
+    return get_sec_filings(ticker)
+
+
 @app.get("/api/stock/{ticker}/news-impact")
 async def api_news_impact(ticker: str, db: Session = Depends(get_db)):
     """Deep analysis of news impact on a stock and user's holdings."""

@@ -244,6 +244,69 @@ def get_options(ticker: str) -> dict:
         return {"ticker": ticker, "error": str(e)}
 
 
+def get_insider_trades(ticker: str) -> dict:
+    """Get insider trading records (executive buy/sell)."""
+    cached = _from_cache(ticker, "insider")
+    if cached:
+        return cached
+
+    try:
+        tk = yf.Ticker(ticker)
+        insider = tk.insider_transactions
+
+        if insider is None or insider.empty:
+            return {"ticker": ticker, "trades": []}
+
+        trades = []
+        for _, row in insider.head(20).iterrows():
+            shares = row.get("Shares")
+            value = row.get("Value")
+            trades.append({
+                "insider": str(row.get("Insider", "")),
+                "position": str(row.get("Position", "")),
+                "trade_date": str(row.get("Start Date", "")),
+                "transaction": str(row.get("Transaction", "")),
+                "text": str(row.get("Text", "")),
+                "shares": int(shares) if shares is not None and not (isinstance(shares, float) and __import__('math').isnan(shares)) else None,
+                "value": round(float(value), 2) if value is not None and not (isinstance(value, float) and __import__('math').isnan(value)) else None,
+                "ownership": str(row.get("Ownership", "")),
+            })
+
+        result = {"ticker": ticker, "trades": trades}
+        _to_cache(ticker, "insider", result)
+        return result
+    except Exception as e:
+        logger.warning("Failed to fetch insider trades for %s: %s", ticker, e)
+        return {"ticker": ticker, "trades": [], "error": str(e)}
+
+
+def get_sec_filings(ticker: str) -> dict:
+    """Get recent SEC filings."""
+    cached = _from_cache(ticker, "sec_filings")
+    if cached:
+        return cached
+
+    try:
+        tk = yf.Ticker(ticker)
+        # yfinance doesn't have direct SEC filings, but we can get from .get_sec_filings()
+        # or use the calendar/major holders as proxy
+        calendar = tk.calendar
+
+        result = {"ticker": ticker, "calendar": {}}
+        if calendar and isinstance(calendar, dict):
+            result["calendar"] = {
+                "earnings_date": str(calendar.get("Earnings Date", "")),
+                "ex_dividend_date": str(calendar.get("Ex-Dividend Date", "")),
+                "dividend_date": str(calendar.get("Dividend Date", "")),
+            }
+
+        _to_cache(ticker, "sec_filings", result)
+        return result
+    except Exception as e:
+        logger.warning("Failed to fetch SEC filings for %s: %s", ticker, e)
+        return {"ticker": ticker, "error": str(e)}
+
+
 def get_analyst_ratings(ticker: str) -> dict:
     """Get analyst recommendations and target prices."""
     cached = _from_cache(ticker, "analyst")

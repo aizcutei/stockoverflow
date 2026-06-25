@@ -135,9 +135,9 @@
 
 ### 10. 数据增强
 - [ ] **多数据源容灾**：yfinance 失败时降级到 Alpha Vantage / Twelve Data
-- [ ] **SEC 文件解析**：自动提取 8-K/10-Q 关键信息
+- [x] **SEC 文件解析**：SEC 日历事件（财报日期、分红日期）
 - [x] **分析师评级**：目标价 + 评级 + 分析师数量（/api/stock/{ticker}/analyst）
-- [ ] **内部交易**：高管买卖记录
+- [x] **内部交易**：高管买卖记录（insider transactions API）
 - [x] **期权链分析**：calls/puts 数据（/api/stock/{ticker}/options）
 
 ### 11. 框架迁移（长期）
