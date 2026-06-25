@@ -303,6 +303,41 @@ async def api_data_sources():
     return sources
 
 
+# --- Auth routes ---
+
+
+@app.get("/api/auth/status")
+async def api_auth_status():
+    """Check if API key authentication is enabled."""
+    from backend.auth import is_auth_enabled, get_stored_keys
+    keys = get_stored_keys()
+    return {
+        "enabled": is_auth_enabled(),
+        "keys_count": len(keys),
+    }
+
+
+class AuthKeyBody(BaseModel):
+    name: str
+
+
+@app.post("/api/auth/key")
+async def api_create_key(body: AuthKeyBody):
+    """Generate a new API key."""
+    from backend.auth import generate_api_key, add_api_key
+    key = generate_api_key()
+    entry = add_api_key(body.name, key)
+    return {"key": key, "name": entry["name"], "prefix": entry["key_prefix"]}
+
+
+@app.get("/api/auth/keys")
+async def api_list_keys():
+    """List stored API key prefixes (not full keys)."""
+    from backend.auth import get_stored_keys
+    keys = get_stored_keys()
+    return [{"name": k["name"], "prefix": k["key_prefix"], "active": k["active"]} for k in keys]
+
+
 @app.post("/api/cache/clear")
 async def api_cache_clear():
     """Clear all caches."""
