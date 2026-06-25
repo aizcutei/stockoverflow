@@ -2997,6 +2997,50 @@
       }
     }
 
+    // Quick backtest from factor expression
+    async function quickBacktestFactor(expr) {
+      if (!currentTicker) return;
+      const resultEl = document.getElementById('factor-result');
+      if (resultEl) {
+        resultEl.innerHTML += '<div style="margin-top:8px;color:var(--text-dim);font-size:12px">⚡ Running quick backtest...</div>';
+      }
+
+      // generate opposite signal for sell
+      let sellExpr = expr;
+      if (expr.includes('<')) sellExpr = expr.replace('<', '>');
+      else if (expr.includes('>')) sellExpr = expr.replace('>', '<');
+      else if (expr.includes('and')) sellExpr = expr; // keep same for compound
+
+      try {
+        const res = await fetch(`/api/backtest/${encodeURIComponent(currentTicker)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buy_expr: expr, sell_expr: sellExpr }),
+        });
+        const data = await res.json();
+        if (data.detail) {
+          if (resultEl) resultEl.innerHTML += `<div style="color:var(--red);font-size:12px">${escHtml(data.detail)}</div>`;
+          return;
+        }
+
+        const rc = data.total_return >= 0 ? 'var(--green)' : 'var(--red)';
+        const btHtml = `
+          <div style="margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px;font-size:12px">
+            <div style="font-weight:600;margin-bottom:4px">⚡ Quick Backtest Result</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <span>Return: <strong style="color:${rc}">${data.total_return}%</strong></span>
+              <span>Sharpe: <strong>${data.sharpe_ratio}</strong></span>
+              <span>Win Rate: <strong>${data.win_rate}%</strong></span>
+              <span>Trades: <strong>${data.total_trades}</strong></span>
+            </div>
+          </div>
+        `;
+        if (resultEl) resultEl.innerHTML += btHtml;
+      } catch (e) {
+        if (resultEl) resultEl.innerHTML += `<div style="color:var(--red);font-size:12px">Backtest failed.</div>`;
+      }
+    }
+
     // Factor signal markers on chart
     function markFactorOnChart(dates, signals) {
       if (!candleChart || !dates || !signals) return;
@@ -3098,11 +3142,12 @@
         const valColor = isSignal ? (val ? 'var(--green)' : 'var(--red)') : 'var(--accent)';
         const valDisplay = isSignal ? (val ? 'TRUE ✓' : 'FALSE ✗') : fmtNum(val);
         const markBtn = isSignal && data.values ? `<button onclick="markFactorOnChart(${escHtml(JSON.stringify(data.dates))}, ${escHtml(JSON.stringify(data.values))})" style="margin-top:6px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:11px;cursor:pointer">📍 Mark on Chart</button>` : '';
+        const quickBtBtn = isSignal ? `<button onclick="quickBacktestFactor('${escHtml(data.expression)}')" style="margin-top:6px;margin-left:4px;padding:4px 10px;border-radius:4px;border:1px solid var(--green);background:rgba(38,166,154,0.1);color:var(--green);font-size:11px;cursor:pointer">⚡ Quick Backtest</button>` : '';
         result.innerHTML = `
           <div style="font-size:11px;color:var(--text-dim);font-family:monospace">${escHtml(data.expression)}</div>
           <div class="factor-val" style="color:${valColor}">${valDisplay}</div>
           ${isSignal ? `<div style="font-size:12px;color:var(--text-dim)">Signals in last 30 days: <strong>${sigCount}</strong></div>` : ''}
-          ${markBtn}
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${markBtn}${quickBtBtn}</div>
           <div id="factor-chart"></div>
         `;
         // render chart for numeric factor values
